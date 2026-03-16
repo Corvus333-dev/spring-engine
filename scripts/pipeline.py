@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import random
 import requests
+import sqlite3
 import time
 from tqdm.auto import tqdm
 
@@ -93,8 +94,8 @@ def download_phenology_metadata(sleep=2):
 def download_phenology_data(species_id=36, start_year=2010, end_year=2025, sleep=2):
     """
     Downloads yearly observation data for a species from the National Phenology Network API using the `fetch_with_retry`
-    helper, and saves the responses as formatted JSON files under `data/phenology/{species_id}/`. Existing files are
-    skipped to avoid redundant downloads.
+    helper, and saves the responses as formatted JSON files under `data/phenology/observations/{species_id}/`. Existing
+    files are skipped to avoid redundant downloads.
 
     Args:
         species_id (int): Unique species identifier. Defaults to 36.
@@ -126,7 +127,7 @@ def download_phenology_data(species_id=36, start_year=2010, end_year=2025, sleep
     if species_entry is None:
         raise ValueError(f"Invalid species_id: {species_id}")
 
-    data_path = ROOT / 'data/phenology' / str(species_id)
+    data_path = ROOT / 'data' / 'phenology' / 'observations' / str(species_id)
     data_path.mkdir(parents=True, exist_ok=True)
 
     base_params = {'species_id': species_id, 'request_src': 'SpringEngine'}
