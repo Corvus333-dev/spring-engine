@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 import random
 import requests
-import sqlite3
 import time
 from tqdm.auto import tqdm
 
@@ -91,16 +90,16 @@ def download_phenology_metadata(sleep=2):
 
             time.sleep(random.uniform(0.9, 1.1) * sleep)
 
-def download_phenology_data(species_id=36, start_year=2010, end_year=2025, sleep=2):
+def download_phenology_data(species_id, start_year, end_year, sleep=2):
     """
     Downloads yearly observation data for a species from the National Phenology Network API using the `fetch_with_retry`
     helper, and saves the responses as formatted JSON files under `data/phenology/observations/{species_id}/`. Existing
     files are skipped to avoid redundant downloads.
 
     Args:
-        species_id (int): Unique species identifier. Defaults to 36.
-        start_year (int): First year of data to download. Defaults to 2010.
-        end_year (int): Last year of data to download. Defaults to 2025.
+        species_id (int): Unique species identifier.
+        start_year (int): First year of data to download.
+        end_year (int): Last year of data to download.
         sleep (int | float): Base sleep duration in seconds after a successful download. A ±10% jitter is applied to
             this value. Defaults to 2.
 
@@ -162,17 +161,17 @@ def download_phenology_data(species_id=36, start_year=2010, end_year=2025, sleep
 
             time.sleep(random.uniform(0.9, 1.1) * sleep)
 
-def download_weather_data(resolution='4km', variables=('ppt', 'tmax', 'tmin'), start_year=2010, end_year=2025, sleep=4):
+def download_weather_data(start_year, end_year, resolution='4km', variables=('ppt', 'tmax', 'tmin'), sleep=4):
     """
     Downloads daily weather data from the PRISM Group API using the `fetch_with_retry` helper, and saves the responses
     as NetCDF files under `data/weather/grids/{resolution}/`. Existing files are skipped to avoid redundant downloads.
     Grid cells are retrieved for each element in `variables`, within the range [start_year, end_year].
 
     Args:
+        start_year (int): First year of data to download.
+        end_year (int): Last year of data to download.
         resolution (str): Grid cell resolution. Defaults to '4km'.
         variables (tuple of str): Weather variables to download. Defaults to ('ppt', 'tmax', 'tmin').
-        start_year (int): First year of data to download. Defaults to 2010.
-        end_year (int): Last year of data to download. Defaults to 2025.
         sleep (int | float): Base sleep duration in seconds after a successful download. A ±10% jitter is applied to
             this value. Defaults to 4.
 
