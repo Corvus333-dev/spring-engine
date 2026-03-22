@@ -62,8 +62,8 @@ def download_phenology_metadata(sleep=2):
         requests.exceptions.RequestException: If all attempts fail.
         json.JSONDecodeError: If the response body cannot be decoded as JSON.
     """
-    data_path = ROOT / 'data' / 'phenology' / 'metadata'
-    data_path.mkdir(parents=True, exist_ok=True)
+    data_dir = ROOT / 'data' / 'phenology' / 'metadata'
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     endpoints = {
         'phenophases': f"{NPN_URL}/phenophases/getPhenophases.json",
@@ -75,7 +75,7 @@ def download_phenology_metadata(sleep=2):
     with requests.Session() as session:
 
         for name, url in pbar:
-            file = data_path / f"{name}.json"
+            data_file = data_dir / f"{name}.json"
 
             try:
                 response = fetch_with_retry(session=session, url=url, context=name, alpha=sleep)
@@ -85,7 +85,7 @@ def download_phenology_metadata(sleep=2):
                 pbar.close()
                 raise
 
-            with file.open('w', encoding='utf-8') as f:
+            with data_file.open('w', encoding='utf-8') as f:
                 json.dump(data, f, indent=4)
 
             time.sleep(random.uniform(0.9, 1.1) * sleep)
@@ -126,8 +126,8 @@ def download_phenology_data(species_id, start_year, end_year, sleep=2):
     if species_entry is None:
         raise ValueError(f"Invalid species_id: {species_id}")
 
-    data_path = ROOT / 'data' / 'phenology' / 'observations' / str(species_id)
-    data_path.mkdir(parents=True, exist_ok=True)
+    data_dir = ROOT / 'data' / 'phenology' / 'observations' / str(species_id)
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     base_params = {'species_id': species_id, 'request_src': 'SpringEngine'}
     url = f"{NPN_URL}/observations/getObservations.json"
@@ -138,9 +138,9 @@ def download_phenology_data(species_id, start_year, end_year, sleep=2):
 
     with requests.Session() as session:
         for year in pbar:
-            file = data_path / f"{year}.json"
+            data_file = data_dir / f"{year}.json"
 
-            if file.exists():
+            if data_file.exists():
                 pbar.set_postfix(status='local')
                 continue
             else:
@@ -156,7 +156,7 @@ def download_phenology_data(species_id, start_year, end_year, sleep=2):
                 pbar.close()
                 raise
 
-            with file.open('w', encoding='utf-8') as f:
+            with data_file.open('w', encoding='utf-8') as f:
                 json.dump(data, f, indent=4)
 
             time.sleep(random.uniform(0.9, 1.1) * sleep)
@@ -183,8 +183,8 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
         conservatively throttles request frequency to maintain a stable session; avoid reducing it. Large year ranges
         may take many hours to download.
     """
-    data_path = ROOT / 'data' / 'weather' / 'grids' / resolution
-    data_path.mkdir(parents=True, exist_ok=True)
+    data_dir = ROOT / 'data' / 'weather' / 'grids' / resolution
+    data_dir.mkdir(parents=True, exist_ok=True)
 
     headers = {'User-Agent': 'SpringEngine (phenology research)'}
 
@@ -202,9 +202,9 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
             date = current_date.strftime("%Y%m%d")
 
             for var in variables:
-                file = data_path / f"{date}_{var}.nc"
+                data_file = data_dir / f"{date}_{var}.nc"
 
-                if file.exists():
+                if data_file.exists():
                     pbar.set_postfix(status='local')
                     continue
                 else:
@@ -219,7 +219,7 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
                     pbar.close()
                     raise
 
-                with file.open('wb') as f:
+                with data_file.open('wb') as f:
                     f.write(response.content)
 
                 time.sleep(random.uniform(0.9, 1.1) * sleep)
