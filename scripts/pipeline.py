@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 import json
+import pandas as pd
 from pathlib import Path
 import random
 import requests
 import time
 from tqdm.auto import tqdm
+import warnings
 
 # Create project root path relative to this module
 ROOT = Path(__file__).resolve().parent.parent
@@ -226,3 +228,72 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
 
             current_date += timedelta(days=1)
             pbar.update(1)
+
+def load_phenology_data(species_id, phenophase_id):
+    """
+     Loads local phenology data for a given species and phenophase into a DataFrame. Reads all JSON files under
+    `data/phenology/observations/{species_id}/`, extracting only values required for model training.
+
+    Args:
+        species_id (int): Unique species identifier.
+        phenophase_id (int): Unique phenophase identifier.
+
+    Returns:
+        pd.DataFrame: DataFrame of matching observation entries, with a fixed column schema.
+
+    Warns:
+        UserWarning: If no records are found matching `phenophase_id` for the species.
+
+    Raises:
+        FileNotFoundError: If no data exists for `species_id`.
+        json.JSONDecodeError: If the file cannot be decoded as JSON.
+        OSError: If the file cannot be accessed.
+        UnicodeDecodeError: If the file cannot be decoded as UTF-8.
+        ValueError: If the file does not contain a non-empty list.
+
+    Notes:
+        - List of all phenophases: `data/phenology/metadata/phenophases.json`
+        - Species search tool (includes phenophases): https://naturesnotebook.usanpn.org/npnapps/species
+    """
+    data_dir = ROOT / 'data' / 'phenology' / 'observations' / str(species_id)
+
+    if not data_dir.is_dir() or not any(data_dir.glob("*.json")):
+        raise FileNotFoundError(f"No data for species '{species_id}'. Run 'download_phenology_data()'")
+
+    cols = [
+        'observation_id',
+        'site_id',
+        'latitude',
+        'longitude',
+        'elevation_in_meters',
+        'individual_id',
+        'observation_date',
+        'day_of_year',
+        'phenophase_status'
+    ]
+
+    rows = []
+
+    for data_file in data_dir.glob("*.json"):
+        try:
+            with data_file.open('r', encoding='utf-8') as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
+            e.add_note(f"Error loading '{data_file.name}'")
+            raise
+
+        if not isinstance(data, list) or not data:
+            raise ValueError(f"Expected a non-empty list in '{data_file.name}'")
+
+        for obs_entry in data:
+            if obs_entry.get('phenophase_id') == phenophase_id:
+                rows.append({k: obs_entry.get(k) for k in cols})
+
+    if not rows:
+        warnings.warn(f"No observations for species '{species_id}' "
+                      f"and phenophase '{phenophase_id}'. "
+                      f"This may be due to an invalid phenophase or sparse data coverage",
+                      category=UserWarning
+        )
+
+    return pd.DataFrame.from_records(rows, columns=cols)
