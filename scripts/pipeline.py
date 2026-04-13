@@ -19,7 +19,6 @@ PHENOLOGY_SCHEMA = {
         'site_id': 'int32',
         'latitude': 'float32',
         'longitude': 'float32',
-        'elevation_in_meters': 'int16',
         'individual_id': 'int32',
         'observation_date': 'datetime64[ns]',
         'day_of_year': 'int16',
@@ -300,9 +299,9 @@ def load_phenology_data(species_id, phenophase_id):
 
 def clean_phenology_data(df):
     """
-    Cleans phenology data by de-duplicating on `observation_id` and filtering invalid rows. Validates non-negative
-    integer IDs, spatial (lat/lon/elevation) and temporal (DOY) bounds, date format (YYYY-MM-DD), date-DOY consistency,
-    and phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
+    Cleans phenology data by deduplicating on `observation_id` and filtering invalid rows. Validates non-negative
+    integer IDs, geographic (lat/lon) and temporal (DOY) bounds, date format (YYYY-MM-DD), date-DOY consistency, and
+    phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
 
     Args:
         df (pd.DataFrame): DataFrame of observation entries, with a fixed column schema.
@@ -325,7 +324,6 @@ def clean_phenology_data(df):
     geotemporal_limits = {
         'latitude': (24.396308, 49.384358),
         'longitude': (-124.848974, -66.885444),
-        'elevation_in_meters': (-86, 4421),
         'day_of_year': (1, 366)
     }
 
