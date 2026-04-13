@@ -272,18 +272,6 @@ def load_phenology_data(species_id, phenophase_id):
     if not data_dir.is_dir() or not any(data_dir.glob("*.json")):
         raise FileNotFoundError(f"No data for species '{species_id}'. Run 'download_phenology_data()'")
 
-    cols = [
-        'observation_id',
-        'site_id',
-        'latitude',
-        'longitude',
-        'elevation_in_meters',
-        'individual_id',
-        'observation_date',
-        'day_of_year',
-        'phenophase_status'
-    ]
-
     rows = []
 
     for data_file in data_dir.glob("*.json"):
@@ -299,7 +287,7 @@ def load_phenology_data(species_id, phenophase_id):
 
         for obs_entry in data:
             if obs_entry.get('phenophase_id') == phenophase_id:
-                rows.append({k: obs_entry.get(k) for k in cols})
+                rows.append({k: obs_entry.get(k) for k in PHENOLOGY_SCHEMA})
 
     if not rows:
         warnings.warn(f"No observations for species '{species_id}' "
@@ -308,7 +296,7 @@ def load_phenology_data(species_id, phenophase_id):
                       category=UserWarning
         )
 
-    return pd.DataFrame.from_records(rows, columns=cols)
+    return pd.DataFrame.from_records(rows, columns=PHENOLOGY_SCHEMA.keys())
 
 def clean_phenology_data(df):
     """
