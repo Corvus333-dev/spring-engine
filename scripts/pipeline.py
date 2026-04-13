@@ -14,6 +14,18 @@ ROOT = Path(__file__).resolve().parent.parent
 NPN_URL = "https://services.usanpn.org/npn_portal"
 PRISM_URL = "https://services.nacse.org/prism/data/get"
 
+PHENOLOGY_SCHEMA = {
+        'observation_id': 'int32',
+        'site_id': 'int32',
+        'latitude': 'float32',
+        'longitude': 'float32',
+        'elevation_in_meters': 'int16',
+        'individual_id': 'int32',
+        'observation_date': 'datetime64[ns]',
+        'day_of_year': 'int16',
+        'phenophase_status': 'int8'
+}
+
 def fetch_with_retry(session, url, context, params=None, alpha=2, attempts=3, timeout=60):
     """
     Fetches data from an API endpoint using an existing session, with base-2 exponential backoff and ±10% jitter.
@@ -297,3 +309,67 @@ def load_phenology_data(species_id, phenophase_id):
         )
 
     return pd.DataFrame.from_records(rows, columns=cols)
+
+def clean_phenology_data(df):
+    """
+    Cleans phenology data by de-duplicating on `observation_id` and filtering invalid rows. Validates non-negative
+    integer IDs, spatial (lat/lon/elevation) and temporal (DOY) bounds, date format (YYYY-MM-DD), date-DOY consistency,
+    and phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
+
+    Args:
+        df (pd.DataFrame): DataFrame of observation entries, with a fixed column schema.
+
+    Returns:
+        pd.DataFrame: Cleaned DataFrame copy with enforced dtypes.
+    """
+    print("Cleaning phenology data...")
+    masks = {}
+
+    df = df.drop_duplicates(subset='observation_id', keep='last', ignore_index=True)
+    unique_len = len(df)
+
+    id_cols = ['observation_id', 'site_id', 'individual_id']
+    ids = {col: pd.to_numeric(df[col], errors='coerce') for col in id_cols}
+    for col, s in ids.items():
+        masks[f"invalid '{col}'"] = (s.isna() | (s % 1 != 0) | (s < 0))
+        df[col] = s
+
+    geotemporal_limits = {
+        'latitude': (24.396308, 49.384358),
+        'longitude': (-124.848974, -66.885444),
+        'elevation_in_meters': (-86, 4421),
+        'day_of_year': (1, 366)
+    }
+
+    geotemporal = {col: pd.to_numeric(df[col], errors='coerce') for col in geotemporal_limits}
+    for col, (min_val, max_val) in geotemporal_limits.items():
+        s = geotemporal[col]
+        masks[f"invalid {col}"] = s.isna() | (s < min_val) | (s > max_val)
+        df[col] = s
+
+    parsed_dates = pd.to_datetime(df['observation_date'], format='%Y-%m-%d', errors='coerce')
+    masks["invalid 'observation_date'"] = parsed_dates.isna()
+    df['observation_date'] = parsed_dates
+
+    valid_dates = ~masks["invalid 'observation_date'"]
+    expected_doy = parsed_dates.dt.dayofyear
+    actual_doy = df['day_of_year']
+    masks["'day_of_year' mismatch"] = valid_dates & (actual_doy != expected_doy)
+
+    uny = pd.to_numeric(df['phenophase_status'], errors='coerce')
+    masks["invalid 'phenophase_status'"] = ~uny.isin((-1, 0, 1))
+    df['phenophase_status'] = uny
+
+    invalid = pd.Series(False, index=df.index)
+    for issue, mask in masks.items():
+        n = mask.sum()
+        if n:
+            print(f"{issue}: {n}")
+        invalid |= mask
+
+    cleaned = df.loc[~invalid].copy()
+    cleaned = cleaned.astype(PHENOLOGY_SCHEMA)
+
+    print(f"Kept {len(cleaned)}/{unique_len} unique observations")
+
+    return cleaned.reset_index(drop=True)
