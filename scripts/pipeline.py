@@ -223,7 +223,7 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
                 else:
                     pbar.set_postfix(status='remote')
 
-                url = f"{PRISM_URL}/us/{resolution}/{var}/{date}"
+                url = f"{PRISM_URL}/us/{resolution}/{var}/{date}?format=nc"
 
                 try:
                     response = fetch_with_retry(session=session, url=url, context=date, alpha=sleep, timeout=120)
