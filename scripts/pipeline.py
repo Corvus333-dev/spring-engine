@@ -177,8 +177,9 @@ def download_phenology_data(species_id, start_year, end_year, sleep=2):
 def download_weather_data(start_year, end_year, resolution='4km', variables=('ppt', 'tmax', 'tmin'), sleep=4):
     """
     Downloads daily weather data from the PRISM Group API using the `fetch_with_retry` helper, and saves the responses
-    as NetCDF files under `data/weather/grids/{resolution}/`. Existing files are skipped to avoid redundant downloads.
-    Grid cells are retrieved for each element in `variables`, within the range [start_year, end_year].
+    as ZIP archives containing NetCDF grid packages under `data/weather/grids/{resolution}/`. Existing files are skipped
+    to avoid redundant downloads. Grid cells are retrieved for each element in `variables`, within the range
+    [start_year, end_year].
 
     Args:
         start_year (int): First year of data to download.
@@ -215,7 +216,7 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
             date = current_date.strftime("%Y%m%d")
 
             for var in variables:
-                data_file = data_dir / f"{date}_{var}.nc"
+                data_file = data_dir / f"{date}_{var}.zip"
 
                 if data_file.exists():
                     pbar.set_postfix(status='local')
