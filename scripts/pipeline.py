@@ -174,7 +174,7 @@ def download_phenology_data(species_id, start_year, end_year, sleep=2):
 
             time.sleep(random.uniform(0.9, 1.1) * sleep)
 
-def download_weather_data(start_year, end_year, resolution='4km', variables=('ppt', 'tmax', 'tmin'), sleep=4):
+def download_weather_data(start_year, end_year, resolution='4km', variables=('ppt', 'tmax', 'tmin'), sleep=10):
     """
     Downloads daily weather data from the PRISM Group API using the `fetch_with_retry` helper, and saves the responses
     as ZIP archives containing NetCDF grid packages under `data/weather/grids/{resolution}/`. Existing files are skipped
