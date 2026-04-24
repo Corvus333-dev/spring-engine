@@ -7,6 +7,7 @@ import requests
 import time
 from tqdm.auto import tqdm
 import warnings
+import zipfile
 
 # Create project root path relative to this module
 ROOT = Path(__file__).resolve().parent.parent
@@ -240,6 +241,43 @@ def download_weather_data(start_year, end_year, resolution='4km', variables=('pp
 
             current_date += timedelta(days=1)
             pbar.update(1)
+
+def extract_weather_data(resolution='4km'):
+    """
+    Extracts a NetCDF file from each ZIP archive in `data/weather/grids/{resolution}/`. Deletes the archive only after
+    verifying a successful extraction. Prints a failure count (if any).
+
+    Args:
+        resolution (str): Grid cell resolution. Defaults to '4km'.
+
+    Notes:
+        Assumes one NetCDF per archive and that the extracted file does not already exist.
+    """
+    data_dir = ROOT / 'data' / 'weather' / 'grids' / resolution
+
+    failed = 0
+
+    data_files = list(data_dir.glob('*.zip'))
+    pbar = tqdm(data_files, desc="Extracting weather data")
+
+    for data_file in pbar:
+        try:
+            with zipfile.ZipFile(data_file) as z:
+                nc_file = next(n for n in z.namelist() if n.endswith('.nc'))
+                z.extract(nc_file, data_dir)
+
+        except (zipfile.BadZipFile, StopIteration):
+            failed += 1
+            continue
+
+        if not (data_dir / nc_file).exists():
+            failed += 1
+            continue
+
+        data_file.unlink()
+
+    if failed > 0:
+        print(f"Failed to extract {failed} NetCDF files")
 
 def load_phenology_data(species_id, phenophase_id):
     """
