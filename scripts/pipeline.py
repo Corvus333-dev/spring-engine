@@ -8,6 +8,7 @@ import time
 from tqdm.auto import tqdm
 import warnings
 import zipfile
+import xarray as xr
 
 # Create project root path relative to this module
 ROOT = Path(__file__).resolve().parent.parent
@@ -265,7 +266,6 @@ def extract_weather_data(resolution='4km'):
             with zipfile.ZipFile(data_file) as z:
                 nc_file = next(n for n in z.namelist() if n.endswith('.nc'))
                 z.extract(nc_file, data_dir)
-
         except (zipfile.BadZipFile, StopIteration):
             failed += 1
             continue
