@@ -307,12 +307,12 @@ def load_phenology_data(species_id, phenophase_id):
     """
     data_dir = ROOT / 'data' / 'phenology' / 'observations' / str(species_id)
 
-    if not data_dir.is_dir() or not any(data_dir.glob("*.json")):
+    if not data_dir.is_dir() or not (data_files := list(data_dir.glob('*.json'))):
         raise FileNotFoundError(f"No data for species '{species_id}'. Run 'download_phenology_data()'")
 
     rows = []
 
-    for data_file in data_dir.glob("*.json"):
+    for data_file in data_files:
         try:
             with data_file.open('r', encoding='utf-8') as f:
                 data = json.load(f)
