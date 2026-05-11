@@ -398,3 +398,92 @@ def clean_phenology_data(df):
     print(f"Kept {len(cleaned)}/{unique_len} unique observations")
 
     return cleaned.reset_index(drop=True)
+
+def _parse_tokens(date_file: Path):
+    """Parses date and variable tokens from a PRISM NetCDF filename"""
+    tokens = date_file.stem.split('_')
+    try:
+        date = pd.to_datetime(tokens[-1], format='%Y%m%d')
+        var = tokens[-4]
+    except (IndexError, ValueError) as e:
+        e.add_note(f"Unexpected filename: {date_file.name}")
+        raise
+
+    return date, var
+
+def build_weather_index(resolution='4km'):
+    """
+    Scans NetCDF files under 'data/weather/grids/{resolution}' and builds a per-file index containing path, date,
+    variable, and phenophase year. The latter is calculated via a +1 year offset for records from June onward.
+
+    Args:
+        resolution (str): Grid cell resolution. Defaults to '4km'.
+
+    Raises:
+        FileNotFoundError: If no data exists for 'resolution'.
+
+    Returns:
+        pd.DataFrame: Weather index with columns ['path', 'date', 'var', 'py'].
+    """
+    data_dir = ROOT / 'data' / 'weather' / 'grids' / resolution
+
+    if not data_dir.is_dir() or not (data_files := list(data_dir.glob('*.nc'))):
+        raise FileNotFoundError(f"No data for resolution '{resolution}'. Run 'download_weather_data()'")
+
+    records = []
+
+    for f in data_files:
+        date, var = _parse_tokens(f)
+        records.append({'path': f, 'date': date, 'var': var})
+
+    df = pd.DataFrame(records)
+    df['py'] = df['date'].dt.year + (df['date'].dt.month >= 6)
+
+    return df
+
+def _preprocess(ds: xr.Dataset):
+    """Creates temporal axis and renames generic grid variable"""
+    source = Path(ds.encoding['source'])
+    date, var = _parse_tokens(source)
+
+    return ds.rename({'Band1': var}).expand_dims(time=[date])
+
+def load_weather_data(idx_df, py, days=30):
+    """
+    Loads local weather data into a Dask-backed xarray Dataset. Uses an index to retrieve grids for a given phenophase
+    year, which are concatenated along a temporal axis. The dataset is chunked across 'time' to optimize memory usage.
+
+    Args:
+        idx_df (pd.DataFrame): Weather index with corresponding paths and phenophase years.
+        py (int): Spring phenophase year. Jun-Dec grids map to the following year.
+        days (int): Time dimension chunk size.
+
+    Raises:
+        ValueError: If no data exists for 'py'.
+
+    Returns:
+        xr.Dataset: Weather dataset with coordinates [time, lat, lon].
+    """
+    df = idx_df[idx_df['py'] == py]
+
+    if df.empty:
+        raise ValueError(f"No data for phenophase year '{py}'. Check offset range")
+
+    data_files = df['path'].tolist()
+
+    ds = xr.open_mfdataset(
+        data_files,
+        chunks={'time': 1}, # Evaluate on a per-file basis, but activate Dask-backed loading
+        compat='override',
+        preprocess=_preprocess,
+        engine='netcdf4',
+        data_vars='minimal',
+        coords='minimal',
+        combine='by_coords',
+        parallel=True,
+    )
+
+    ds = ds.drop_vars('crs', errors='ignore')  # Drop redundant coordinate reference system
+    ds = ds.chunk({'time': days}) # Rechunk across files after temporal concatenation
+
+    return ds
