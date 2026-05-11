@@ -307,7 +307,7 @@ def load_phenology_data(species_id, phenophase_id):
     """
     data_dir = ROOT / 'data' / 'phenology' / 'observations' / str(species_id)
 
-    if not data_dir.is_dir() or not (data_files := list(data_dir.glob('*.json'))):
+    if not (data_files := list(data_dir.glob('*.json'))):
         raise FileNotFoundError(f"No data for species '{species_id}'. Run 'download_phenology_data()'")
 
     rows = []
@@ -427,7 +427,7 @@ def build_weather_index(resolution='4km'):
     """
     data_dir = ROOT / 'data' / 'weather' / 'grids' / resolution
 
-    if not data_dir.is_dir() or not (data_files := list(data_dir.glob('*.nc'))):
+    if not (data_files := list(data_dir.glob('*.nc'))):
         raise FileNotFoundError(f"No data for resolution '{resolution}'. Run 'download_weather_data()'")
 
     records = []
