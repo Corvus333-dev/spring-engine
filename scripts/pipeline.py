@@ -442,11 +442,15 @@ def build_weather_index(resolution='4km'):
     return df
 
 def _preprocess(ds: xr.Dataset):
-    """Creates temporal axis and renames generic grid variable"""
+    """Creates temporal axis, renames generic grid variable, and cleans up CRS artifacts"""
     source = Path(ds.encoding['source'])
     date, var = _parse_tokens(source)
 
-    return ds.rename({'Band1': var}).expand_dims(time=[date])
+    ds = ds.rename({'Band1': var})
+    ds = ds.drop_vars('crs', errors='ignore')
+    ds[var].attrs.pop('grid_mapping', None)
+
+    return ds.expand_dims(time=[date])
 
 def load_weather_data(idx_df, py, days=30):
     """
@@ -483,7 +487,4 @@ def load_weather_data(idx_df, py, days=30):
         parallel=True,
     )
 
-    ds = ds.drop_vars('crs', errors='ignore')  # Drop redundant coordinate reference system
-    ds = ds.chunk({'time': days}) # Rechunk across files after temporal concatenation
-
-    return ds
+    return ds.chunk({'time': days})
