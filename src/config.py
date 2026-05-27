@@ -20,7 +20,7 @@ class DataConfig:
     temperature: Tuple[float, float] = (-56.7, 56.7)
     day_of_year: Tuple[int, int] = (1, 366)
 
-class DataDir:
+class DirConfig:
     def __init__(self, cfg: DataConfig):
         root = Path(__file__).resolve().parents[1]
         data = root / 'data'
@@ -29,6 +29,12 @@ class DataDir:
         self.obs = data / 'phenology' / 'observations' / str(cfg.species_id)
         self.grids = data / 'weather' / 'grids' / cfg.resolution
 
+        self._create_dirs()
+
+    def _create_dirs(self):
+        for path in (self.meta, self.obs, self.grids):
+            path.mkdir(parents=True, exist_ok=True)
+
 # Static initialization
 data_cfg = DataConfig()
-data_dir = DataDir(data_cfg)
+dir_cfg = DirConfig(data_cfg)
