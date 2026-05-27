@@ -9,6 +9,7 @@ class DataConfig:
     phenophase_id: int = 373
 
     # Grid specs
+    region: str = 'us'
     resolution: str = '4km'
     variables: tuple[str, ...] = ('ppt', 'tmax', 'tmin')
 
