@@ -1,16 +1,13 @@
 import json
 from pathlib import Path
 
-# Create project root path relative to this module
-ROOT = Path(__file__).resolve().parent.parent
-
-def _search_species(query):
+def _search_species(query: str, input_dir: Path):
     """Returns matching species metadata entries"""
-    species_file = ROOT / 'data' / 'phenology' / 'metadata' / 'species.json'
+    species_meta_file = input_dir / 'species.json'
 
     try:
-        with species_file.open('r', encoding='utf-8') as f:
-            species_metadata = json.load(f)
+        with species_meta_file.open('r', encoding='utf-8') as f:
+            species_meta = json.load(f)
     except FileNotFoundError as e:
         e.add_note("Species metadata missing. Run 'download_phenology_metadata()'")
         raise
@@ -18,7 +15,7 @@ def _search_species(query):
     query = query.lower()
     matches = []
 
-    for s in species_metadata:
+    for s in species_meta:
         scope = f"{s['common_name']} {s['genus']} {s['species']}".lower()
         if query in scope:
             matches.append({
@@ -29,11 +26,12 @@ def _search_species(query):
 
     return matches
 
-def lookup_species(query=None):
+def lookup_species(input_dir, query=None):
     """
     Searches species metadata for entries whose common or scientific name contains the query and prints matching IDs.
 
     Args:
+        input_dir (pathlib.Path): Contains species metadata file.
         query (str | None): Species name to search for. Defaults to None.
 
     Raises:
@@ -42,7 +40,7 @@ def lookup_species(query=None):
     if query is None:
         query = input("Enter species name: ")
 
-    matches = _search_species(query)
+    matches = _search_species(query, input_dir)
 
     if not matches:
         print("No matches found")
