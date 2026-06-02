@@ -219,32 +219,35 @@ def _preprocess(ds: xr.Dataset):
 
     return ds.expand_dims(time=[date])
 
-def load_weather_data(idx_df, py, days=30):
+def load_weather_data(idx_df, py, s=100):
     """
     Loads local weather data into a Dask-backed xarray Dataset. Uses an index to retrieve grids for a given phenophase
-    year, which are concatenated along a temporal axis. The dataset is chunked across 'time' to optimize memory usage.
+    year, which are concatenated along a temporal axis. The dataset is chunked to optimize memory usage.
 
     Args:
         idx_df (pd.DataFrame): Weather index with corresponding paths and phenophase years.
         py (int): Spring phenophase year. Jun-Dec grids map to the following year.
-        days (int): Time dimension chunk size.
+        s (int): Chunk size for spatial dimensions.
 
     Raises:
         ValueError: If no data exists for 'py'.
 
     Returns:
-        xr.Dataset: Weather dataset with coordinates [time, lat, lon].
+        xr.Dataset: Weather dataset with dimensions [time, lat, lon].
+
+    Notes:
+        Uses the module-level `_preprocess` helper for temporal axis creation.
     """
     df = idx_df[idx_df['py'] == py]
 
     if df.empty:
         raise ValueError(f"No data for phenophase year '{py}'. Check offset range")
 
-    data_files = df['path'].tolist()
+    grid_files = df['path'].tolist()
 
     ds = xr.open_mfdataset(
-        data_files,
-        chunks={'time': 1}, # Evaluate on a per-file basis, but activate Dask-backed loading
+        grid_files,
+        chunks={'lat': s, 'lon': s}, # Chunk spatially per daily grid
         compat='override',
         preprocess=_preprocess,
         engine='netcdf4',
@@ -254,4 +257,6 @@ def load_weather_data(idx_df, py, days=30):
         parallel=True,
     )
 
-    return ds.chunk({'time': days})
+    ds = ds.chunk({'time': -1}) # Rechunk temporally across all grids
+
+    return ds
