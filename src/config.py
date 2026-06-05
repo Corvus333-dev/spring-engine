@@ -14,11 +14,10 @@ class DataConfig:
     variables: tuple[str, ...] = ('ppt', 'tmax', 'tmin')
 
     # Data extrema
-    latitude: tuple[float, float] = (24.396308, 49.384358)
-    longitude: tuple[float, float] = (-124.848974, -66.885444)
+    latitude: tuple[float, float] = (24.0, 50.0)
+    longitude: tuple[float, float] = (-125.0, -66.0)
     precipitation: tuple[int, int] = (0, 1092)
     temperature: tuple[float, float] = (-56.7, 56.7)
-    day_of_year: tuple[int, int] = (1, 366)
 
 class DirConfig:
     def __init__(self, cfg: DataConfig):
