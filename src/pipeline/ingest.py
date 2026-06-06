@@ -168,7 +168,7 @@ def download_weather_data(start_year, end_year, region, resolution, variables, o
         end_year (int): Last year of data to download.
         region (str): Geographic boundary of grid packages.
         resolution (str): Grid cell resolution.
-        variables (tuple of str): Discrete weather metrics per grid.
+        variables (tuple of str): Weather data variables (e.g., ppt, tmax, tmin).
         output_dir (pathlib.Path): Receives grid archives.
         sleep (int | float): Base sleep duration in seconds after a successful download. A ±10% jitter is applied to
             this value. Defaults to 4.
