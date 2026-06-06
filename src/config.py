@@ -8,16 +8,12 @@ class DataConfig:
     species_id: int = 36
     phenophase_id: int = 373
 
-    # Grid specs
     region: str = 'us'
     resolution: str = '4km'
     variables: tuple[str, ...] = ('ppt', 'tmax', 'tmin')
 
-    # Data extrema
-    latitude: tuple[float, float] = (24.0, 50.0)
-    longitude: tuple[float, float] = (-125.0, -66.0)
-    precipitation: tuple[int, int] = (0, 1092)
-    temperature: tuple[float, float] = (-56.7, 56.7)
+    lat_bounds: tuple[float, float] = (24.0, 50.0)
+    lon_bounds: tuple[float, float] = (-125.0, -66.0)
 
 class DirConfig:
     def __init__(self, cfg: DataConfig):
