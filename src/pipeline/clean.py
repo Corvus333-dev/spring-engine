@@ -30,15 +30,15 @@ def load_phenology_data(species_id, phenophase_id, input_dir):
     Returns:
         pd.DataFrame: DataFrame of matching observation entries, with a fixed column schema.
 
-    Warns:
-        UserWarning: If no records are found matching `phenophase_id` for the species.
-
     Raises:
         FileNotFoundError: If no data exists for `species_id`.
         json.JSONDecodeError: If the file cannot be decoded as JSON.
         OSError: If the file cannot be accessed.
         UnicodeDecodeError: If the file cannot be decoded as UTF-8.
         ValueError: If the file does not contain a non-empty list.
+
+    Warns:
+        UserWarning: If no records are found matching `phenophase_id` for the species.
 
     Notes:
         - Species search tool (includes phenophases): https://naturesnotebook.usanpn.org/npnapps/species.
@@ -188,11 +188,11 @@ def build_weather_index(input_dir):
     Args:
         input_dir (pathlib.Path): Contains grid files.
 
-    Raises:
-        FileNotFoundError: If no NetCDF files exist under `input_dir`.
-
     Returns:
         pd.DataFrame: Weather index with columns ['path', 'date', 'var', 'py'].
+
+    Raises:
+        FileNotFoundError: If no NetCDF files exist under `input_dir`.
     """
     if not (grid_files := list(input_dir.glob('*.nc'))):
         raise FileNotFoundError(f"No data for resolution '{input_dir.name}'. Run 'download_weather_data()'")
@@ -229,11 +229,11 @@ def load_weather_data(idx_df, py, s=100):
         py (int): Spring phenophase year. Jun-Dec grids map to the following year.
         s (int): Chunk size for spatial dimensions.
 
-    Raises:
-        ValueError: If no data exists for 'py'.
-
     Returns:
         xr.Dataset: Weather dataset with dimensions [time, lat, lon].
+
+    Raises:
+        ValueError: If no data exists for 'py'.
 
     Notes:
         Uses the module-level `_preprocess` helper for temporal axis creation.
