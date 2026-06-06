@@ -260,3 +260,65 @@ def load_weather_data(idx_df, py, s=100):
     ds = ds.chunk({'time': -1}) # Rechunk temporally across all grids
 
     return ds
+
+def validate_weather_data(ds, variables, lat_bounds, lon_bounds):
+    """
+    Validates overall structure and coordinate values of a PRISM-sourced xarray Dataset.
+
+    Args:
+        ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon].
+        variables (tuple of str): Weather data variables (e.g., ppt, tmax, tmin).
+        lat_bounds (tuple of float): Latitudinal bounds (min, max).
+        lon_bounds (tuple of float): Longitudinal bounds (min, max).
+
+    Returns:
+        xr.Dataset: Validated weather dataset with enforced dtype for spatial coordinates.
+
+    Raises:
+        ValueError: If dataset structure or coordinate values are invalid.
+        TypeError: If time values are not 'datetime64'.
+
+    Warns:
+        UserWarning: If dataset contains extra dimensions or variables.
+    """
+    expected_dims = {'time', 'lat', 'lon'}
+    expected_vars = set(variables)
+
+    expected = expected_dims | expected_vars
+    actual = set(ds.variables) # Capture dimension coordinates and data variables
+
+    if missing := expected - actual:
+        raise ValueError(f"Expected dimensions and/or variables are missing: {missing}")
+
+    if extra := actual - expected:
+        warnings.warn(
+            f"Unexpected dimensions and/or variables are present: {extra}. "
+            "This may result in suboptimal Dask operations",
+            category=UserWarning
+        )
+
+    # Downcast for consistency with phenology schema
+    ds = ds.assign_coords(lat=ds.lat.astype('float32'), lon=ds.lon.astype('float32'))
+
+    if ds.indexes['time'].dtype.kind != 'M':
+        raise TypeError("Dimension coordinate 'time' values are not 'datetime64'")
+
+    for dim in expected_dims:
+        idx = ds.indexes[dim]
+
+        if idx.hasnans:
+            raise ValueError(f"Dimension coordinate '{dim}' contains NaN values")
+
+        if idx.has_duplicates:
+            raise ValueError(f"Dimension coordinate '{dim}' contains duplicate values")
+
+        if not idx.is_monotonic_increasing:
+            raise ValueError(f"Dimension coordinate '{dim}' values are not in ascending order")
+
+    if ds.lat[0] < lat_bounds[0] or ds.lat[-1] > lat_bounds[-1]:
+        raise ValueError("Latitude coordinates are out of bounds")
+
+    if ds.lon[0] < lon_bounds[0] or ds.lon[-1] > lon_bounds[-1]:
+        raise ValueError("Longitude coordinates are out of bounds")
+
+    return ds
