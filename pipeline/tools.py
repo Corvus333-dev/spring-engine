@@ -35,7 +35,7 @@ def lookup_species(input_dir, query=None):
         query (str | None): Species name to search for. Defaults to None.
 
     Raises:
-        FileNotFoundError: If species metadata file is missing. Run `pipeline.download_phenology_metadata()` if needed.
+        FileNotFoundError: If species metadata file is missing. Run `ingest.download_phenology_metadata()` if needed.
     """
     if query is None:
         query = input("Enter species name: ")
