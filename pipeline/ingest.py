@@ -4,6 +4,7 @@ import random
 import requests
 import time
 from tqdm.auto import tqdm
+import zipfile
 
 NPN_URL = "https://services.usanpn.org/npn_portal"
 PRISM_URL = "https://services.nacse.org/prism/data/get"
@@ -220,3 +221,37 @@ def download_weather_data(start_year, end_year, region, resolution, variables, o
 
             current_date += timedelta(days=1)
             pbar.update(1)
+
+def extract_weather_data(io_dir):
+    """
+    Extracts a NetCDF file from each ZIP archive in `input_dir`. Deletes the archive only after verifying a successful
+    extraction. Prints a failure count (if any).
+
+    Args:
+        io_dir (pathlib.Path): Contains grid archives and receives extracted grid files.
+
+    Notes:
+        Assumes one NetCDF file per archive and that the extracted file does not already exist.
+    """
+    failed = 0
+
+    grid_archives = list(io_dir.glob('*.zip'))
+    pbar = tqdm(grid_archives, desc="Extracting weather data")
+
+    for grid_archive in pbar:
+        try:
+            with zipfile.ZipFile(grid_archive) as z:
+                grid_file = next(n for n in z.namelist() if n.endswith('.nc'))
+                z.extract(grid_file, io_dir)
+        except (zipfile.BadZipFile, StopIteration):
+            failed += 1
+            continue
+
+        if not (io_dir / grid_file).exists():
+            failed += 1
+            continue
+
+        grid_archive.unlink()
+
+    if failed > 0:
+        print(f"Failed to extract {failed} NetCDF files")

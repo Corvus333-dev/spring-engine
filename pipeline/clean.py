@@ -1,10 +1,8 @@
 import pandas as pd
 from pathlib import Path
 import json
-from tqdm.auto import tqdm
 import warnings
 import xarray as xr
-import zipfile
 
 PHENOLOGY_SCHEMA = {
         'observation_id': 'int32',
@@ -133,40 +131,6 @@ def clean_phenology_data(df, lat_bounds, lon_bounds):
     print(f"Kept {len(cleaned)}/{unique_len} unique observations")
 
     return cleaned.reset_index(drop=True)
-
-def extract_weather_data(io_dir):
-    """
-    Extracts a NetCDF file from each ZIP archive in `input_dir`. Deletes the archive only after verifying a successful
-    extraction. Prints a failure count (if any).
-
-    Args:
-        io_dir (pathlib.Path): Contains grid archives and receives extracted grid files.
-
-    Notes:
-        Assumes one NetCDF file per archive and that the extracted file does not already exist.
-    """
-    failed = 0
-
-    grid_archives = list(io_dir.glob('*.zip'))
-    pbar = tqdm(grid_archives, desc="Extracting weather data")
-
-    for grid_archive in pbar:
-        try:
-            with zipfile.ZipFile(grid_archive) as z:
-                grid_file = next(n for n in z.namelist() if n.endswith('.nc'))
-                z.extract(grid_file, io_dir)
-        except (zipfile.BadZipFile, StopIteration):
-            failed += 1
-            continue
-
-        if not (io_dir / grid_file).exists():
-            failed += 1
-            continue
-
-        grid_archive.unlink()
-
-    if failed > 0:
-        print(f"Failed to extract {failed} NetCDF files")
 
 def _parse_tokens(grid_file: Path):
     """Parses date and variable tokens from a PRISM NetCDF filename"""
