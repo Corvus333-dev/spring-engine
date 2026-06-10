@@ -141,7 +141,7 @@ def load_phenology_data(species_id, phenophase_id, input_dir):
         - Refer to `ingest.download_phenology_metadata()` output if needed.
     """
     if not (obs_files := list(input_dir.glob('*.json'))):
-        raise FileNotFoundError(f"No data for species '{species_id}'. Run 'download_phenology_data()'")
+        raise FileNotFoundError(f"No data for species '{species_id}'")
 
     rows = []
 

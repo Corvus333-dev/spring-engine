@@ -118,7 +118,7 @@ def download_phenology_data(species_id, start_year, end_year, input_dir, output_
         with open(species_meta_file, 'r', encoding='utf-8') as f:
             species_meta = json.load(f)
     except FileNotFoundError as e:
-        e.add_note("Species metadata missing. Run 'download_phenology_metadata()'")
+        e.add_note("No species metadata file")
         raise
 
     species_entry = next((s for s in species_meta if s['species_id'] == species_id), None)

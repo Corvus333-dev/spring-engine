@@ -9,7 +9,7 @@ def _search_species(query: str, input_dir: Path):
         with species_meta_file.open('r', encoding='utf-8') as f:
             species_meta = json.load(f)
     except FileNotFoundError as e:
-        e.add_note("Species metadata missing. Run 'download_phenology_metadata()'")
+        e.add_note("No species metadata file")
         raise
 
     query = query.lower()
