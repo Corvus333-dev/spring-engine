@@ -1,7 +1,37 @@
 import json
 from pathlib import Path
 
-def _search_species(query: str, input_dir: Path):
+def lookup_species(query, input_dir):
+    """
+    Searches species metadata for entries whose common or scientific name contains the query and prints matching IDs.
+
+    Args:
+        query (str): Species name to search for.
+        input_dir (pathlib.Path): Contains species metadata file.
+
+    Raises:
+        FileNotFoundError: If species metadata file is missing.
+    """
+    matches = _search_species(query, input_dir)
+
+    if not matches:
+        print("No matches found")
+        return
+
+    col_0_header = "ID"
+    col_1_header = "Common Name (Scientific Name)"
+    col_0_width = max(len(col_0_header), max(len(str(s['species_id'])) for s in matches))
+    col_1_width = max(len(col_1_header), max(len(f"{s['common_name']} ({s['scientific_name']})") for s in matches))
+    row_break = "=" * (col_0_width + col_1_width + 3)
+
+    print(row_break)
+    print(f"{col_0_header:>{col_0_width}} | {col_1_header}")
+    print(row_break)
+
+    for s in matches:
+        print(f"{s['species_id']:>{col_0_width}} | {s['common_name']} ({s['scientific_name']})")
+
+def _search_species(query: str, input_dir: Path) -> list[dict]:
     """Returns matching species metadata entries"""
     species_meta_file = input_dir / 'species.json'
 
@@ -25,36 +55,3 @@ def _search_species(query: str, input_dir: Path):
             })
 
     return matches
-
-def lookup_species(input_dir, query=None):
-    """
-    Searches species metadata for entries whose common or scientific name contains the query and prints matching IDs.
-
-    Args:
-        input_dir (pathlib.Path): Contains species metadata file.
-        query (str | None): Species name to search for. Defaults to None.
-
-    Raises:
-        FileNotFoundError: If species metadata file is missing. Run `ingest.download_phenology_metadata()` if needed.
-    """
-    if query is None:
-        query = input("Enter species name: ")
-
-    matches = _search_species(query, input_dir)
-
-    if not matches:
-        print("No matches found")
-        return
-
-    col_0_header = "ID"
-    col_1_header = "Common Name (Scientific Name)"
-    col_0_width = max(len(col_0_header), max(len(str(s['species_id'])) for s in matches))
-    col_1_width = max(len(col_1_header), max(len(f"{s['common_name']} ({s['scientific_name']})") for s in matches))
-    row_break = "=" * (col_0_width + col_1_width + 3)
-
-    print(row_break)
-    print(f"{col_0_header:>{col_0_width}} | {col_1_header}")
-    print(row_break)
-
-    for s in matches:
-        print(f"{s['species_id']:>{col_0_width}} | {s['common_name']} ({s['scientific_name']})")
