@@ -110,7 +110,7 @@ def download_phenology_data(species_id, start_year, end_year, input_dir, output_
 
     Notes:
         - Uses the module-level `_fetch_with_retry` helper for network requests.
-        - The `tools.lookup_species` helper can be used to retrieve a valid `species_id`.
+        - The `tools.lookup_species` tool can be used to retrieve a valid `species_id`.
     """
     species_meta_file = input_dir / 'species.json'
 
