@@ -181,7 +181,7 @@ def clean_phenology_data(df, lat_bounds, lon_bounds):
         lon_bounds (tuple of float): Longitudinal bounds (min, max).
 
     Returns:
-        pd.DataFrame: Cleaned DataFrame copy with enforced dtypes.
+        pd.DataFrame: Clean DataFrame copy with enforced dtypes.
     """
     print("Cleaning phenology data...")
     masks = {}
@@ -230,9 +230,9 @@ def clean_phenology_data(df, lat_bounds, lon_bounds):
 
     return cleaned.reset_index(drop=True)
 
-def validate_weather_data(ds, variables, lat_bounds, lon_bounds):
+def clean_weather_data(ds, variables, lat_bounds, lon_bounds):
     """
-    Validates overall structure and coordinate values of a PRISM-sourced xarray Dataset.
+    Ensures that overall structure and coordinate values of a PRISM-sourced xarray Dataset are clean.
 
     Args:
         ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon].
@@ -241,7 +241,7 @@ def validate_weather_data(ds, variables, lat_bounds, lon_bounds):
         lon_bounds (tuple of float): Longitudinal bounds (min, max).
 
     Returns:
-        xr.Dataset: Validated weather dataset with enforced dtype for spatial coordinates.
+        xr.Dataset: Clean weather dataset with enforced spatial coordinate dtypes.
 
     Raises:
         ValueError: If dataset structure or coordinate values are invalid.
