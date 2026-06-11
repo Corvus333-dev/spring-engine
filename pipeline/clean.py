@@ -66,7 +66,7 @@ class WeatherLoader:
     def _build_file_index(self):
         """
         Scans NetCDF files under 'input_dir' and builds a per-file index containing path and phenophase year. The latter
-        is calculated via a +1 year offset for records from June onward.
+        is calculated via a +1 year offset for records from the summer solstice onward.
 
         Returns:
             pd.DataFrame: File index with columns ['path', 'phenophase_year'].
@@ -84,7 +84,10 @@ class WeatherLoader:
             records.append({'path': f, 'date': date})
 
         df = pd.DataFrame(records)
-        df['phenophase_year'] = df['date'].dt.year + (df['date'].dt.month >= 6)
+
+        m, d = df['date'].dt.month, df['date'].dt.day
+        after_spring = (m > 6) | ((m == 6) & (d >= 21))
+        df['phenophase_year'] = df['date'].dt.year + after_spring
 
         return df.drop(columns=['date'])
 

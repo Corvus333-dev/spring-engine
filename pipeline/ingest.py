@@ -162,7 +162,7 @@ def download_weather_data(start_year, end_year, region, resolution, variables, o
     """
     Downloads daily weather data from the PRISM Group API and saves the responses as ZIP archives containing NetCDF grid
     packages. Existing files are skipped to avoid redundant downloads. Grid cells are retrieved for each element in
-    `variables`, within the range [start_year, end_year].
+    `variables` using a summer solstice-aligned phenophase year, which requires data from the preceding calendar year.
 
     Args:
         start_year (int): First year of data to download.
@@ -184,8 +184,8 @@ def download_weather_data(start_year, end_year, region, resolution, variables, o
     headers = {'User-Agent': 'SpringEngine (phenology research)'}
     grid_code = {'4km': '25m', '800m': '30s'}[resolution]  # NetCDF filename token
 
-    start_date = datetime(start_year, 1, 1)
-    end_date = datetime(end_year, 12, 31)
+    start_date = datetime(start_year - 1, 6, 21)
+    end_date = datetime(end_year, 6, 20)
     current_date = start_date
     total_days = (end_date - start_date).days + 1
 
