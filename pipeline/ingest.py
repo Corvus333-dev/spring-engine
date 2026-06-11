@@ -182,6 +182,7 @@ def download_weather_data(start_year, end_year, region, resolution, variables, o
         - PRISM monitors download activity and may restrict access for excessive requests.
     """
     headers = {'User-Agent': 'SpringEngine (phenology research)'}
+    grid_code = {'4km': '25m', '800m': '30s'}[resolution]  # NetCDF filename token
 
     start_date = datetime(start_year, 1, 1)
     end_date = datetime(end_year, 12, 31)
@@ -198,8 +199,9 @@ def download_weather_data(start_year, end_year, region, resolution, variables, o
 
             for var in variables:
                 grid_archive = output_dir / f"{date}_{var}.zip"
+                grid_file = output_dir / f"prism_{var}_{region}_{grid_code}_{date}.nc"
 
-                if grid_archive.exists():
+                if grid_archive.exists() or grid_file.exists():
                     pbar.set_postfix(status='local')
                     continue
                 else:
