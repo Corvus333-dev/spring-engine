@@ -34,7 +34,7 @@ class WeatherLoader:
         phenophase year, which are concatenated along a temporal axis. The dataset is chunked to optimize memory usage.
 
         Args:
-            phenophase_year (int): Spring phenophase year. Jun-Dec grids map to the following year.
+            phenophase_year (int): Spring phenophase year. Jun 21 - Dec 31 grids map to the following year.
 
         Returns:
             xr.Dataset: Weather dataset with dimensions [time, lat, lon].
@@ -66,7 +66,7 @@ class WeatherLoader:
     def _build_file_index(self):
         """
         Scans NetCDF files under 'input_dir' and builds a per-file index containing path and phenophase year. The latter
-        is calculated via a +1 year offset for records from the summer solstice onward.
+        is calculated via a +1 year offset for records from the summer solstice (Jun 21) onward.
 
         Returns:
             pd.DataFrame: File index with columns ['path', 'phenophase_year'].
