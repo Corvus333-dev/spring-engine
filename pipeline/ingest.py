@@ -243,7 +243,9 @@ def extract_weather_data(io_dir):
     """
     failed = 0
 
-    grid_archives = list(io_dir.glob('*.zip'))
+    if not (grid_archives := list(io_dir.glob('*.zip'))):
+        return
+
     pbar = tqdm(grid_archives, desc="Extracting weather data")
 
     for grid_archive in pbar:
