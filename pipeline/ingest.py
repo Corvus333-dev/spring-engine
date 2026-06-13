@@ -49,7 +49,7 @@ def _fetch_with_retry(session, url, context, params=None, alpha=2, attempts=3, t
 def download_phenology_metadata(output_dir, sleep=2):
     """
     Downloads phenophase and species metadata from the National Phenology Network API and saves the responses as
-    formatted JSON files.
+    formatted JSON files. Existing files are skipped to avoid redundant downloads.
 
     Args:
         output_dir (pathlib.Path): Receives metadata files.
@@ -74,6 +74,12 @@ def download_phenology_metadata(output_dir, sleep=2):
 
         for name, url in pbar:
             meta_file = output_dir / f"{name}.json"
+
+            if meta_file.exists():
+                pbar.set_postfix(status='local')
+                continue
+            else:
+                pbar.set_postfix(status='remote')
 
             try:
                 response = _fetch_with_retry(session=session, url=url, context=name, alpha=sleep)
