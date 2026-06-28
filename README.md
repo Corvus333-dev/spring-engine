@@ -5,7 +5,7 @@
 - [x] Data ingestion
 - [x] Label cleaning/validation
 - [x] Feature cleaning/validation
-- [ ] Feature engineering
+- [x] Feature engineering
 - [ ] Model training and evaluation
 - [ ] Model deployment
 - [ ] Results and documentation
