@@ -1,4 +1,5 @@
 import calendar
+import pandas as pd
 import xarray as xr
 
 def engineer_monthly_features(ds):
@@ -72,3 +73,60 @@ def engineer_thermal_features(ds, chill_bounds, gdd_bounds):
     ds['gdd'] = gdd
 
     return ds
+
+def compose_labels(df, trans_gap, cycle_gap):
+    """
+    Extracts phenophase event onset labels and curates according to the following rules:
+
+        - For a specific plant individual, an event onset is assigned as the midpoint between a positive (1)
+          phenophase observation and the nearest preceding negative (0) phenophase observation occurring within
+          `trans_gap` days.
+        - An event onset is accepted only if no prior event onsets from any plant individual at the corresponding site
+          exist within the preceding `cycle_gap` days. This effectively retains the earliest detected phenophase at each
+          site for every phenological cycle.
+
+    Args:
+        df (pd.DataFrame): Phenology DataFrame with fixed column schema (enforced in pipeline.clean).
+        trans_gap (int): Maximum observer cadence window (e.g., 14 days between observations) for 0 -> 1 transitions.
+        cycle_gap (int): Minimum days between phenophase onsets (typically quasi-annual cycles) at a given site.
+
+    Returns:
+        pd.DataFrame: Curated phenophase onset labels with 'onset_date' column added to original schema.
+    """
+    df = df.sort_values(['site_id', 'individual_id', 'observation_date']).copy()
+
+    df['prev_status'] = df.groupby(['site_id', 'individual_id'])['phenophase_status'].shift(1)
+    df['prev_date'] = df.groupby(['site_id', 'individual_id'])['observation_date'].shift(1)
+
+    is_trans = (df['prev_status'] == 0) & (df['phenophase_status'] == 1)
+    valid_gap = (df['observation_date'] - df['prev_date']) <= pd.Timedelta(days=trans_gap)
+
+    pool = df[is_trans & valid_gap].copy()
+    pool['onset_date'] = pool['prev_date'] + (pool['observation_date'] - pool['prev_date']) / 2
+
+    labels = pool.groupby('site_id', group_keys=False).apply(lambda x: _filter_consecutive_onsets(x, cycle_gap))
+
+    return labels.drop(columns=['prev_status', 'prev_date'])
+
+def _filter_consecutive_onsets(site_group, cycle_gap):
+    """
+    Filters event onsets for a site, retaining records separated by more than `cycle_gap` days.
+
+    Args:
+        site_group (pd.DataFrame): Site-specific subset of plant individuals with a valid phenophase transition.
+        cycle_gap (int): Minimum days between phenophase onsets (typically quasi-annual cycles) at a given site.
+
+    Returns:
+        pd.DataFrame: Filtered event onset records.
+    """
+    valid_rows = []
+    last_onset = pd.NaT
+
+    site_group = site_group.sort_values('onset_date')
+
+    for _, row in site_group.iterrows():
+        if pd.isna(last_onset) or (row['onset_date'] - last_onset) > pd.Timedelta(days=cycle_gap):
+            valid_rows.append(row)
+            last_onset = row['onset_date']
+
+    return pd.DataFrame(valid_rows)
