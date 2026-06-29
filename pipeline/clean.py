@@ -28,24 +28,24 @@ class WeatherLoader:
         self.chunk_size = chunk_size
         self.file_index = self._build_file_index()
 
-    def load_weather_data(self, phenophase_year):
+    def load_weather_data(self, year):
         """
         Loads local weather data into a Dask-backed xarray Dataset. Uses a file index to retrieve grids for a given
-        phenophase year, which are concatenated along a temporal axis. The dataset is chunked to optimize memory usage.
+        calendar year, which are concatenated along a temporal axis. The dataset is chunked to optimize memory usage.
 
         Args:
-            phenophase_year (int): Spring phenophase year. Jun 21 - Dec 31 grids map to the following year.
+            year (int): Year of data to load.
 
         Returns:
             xr.Dataset: Weather dataset with dimensions [time, lat, lon].
 
         Raises:
-            ValueError: If no data exists for `phenophase_year`.
+            ValueError: If no data exists for `year`.
         """
-        df = self.file_index[self.file_index['phenophase_year'] == phenophase_year]
+        df = self.file_index[self.file_index['year'] == year]
 
         if df.empty:
-            raise ValueError(f"No data for phenophase year '{phenophase_year}'")
+            raise ValueError(f"No data for year '{year}'")
 
         grid_files = df['path'].tolist()
 
@@ -65,11 +65,10 @@ class WeatherLoader:
 
     def _build_file_index(self):
         """
-        Scans NetCDF files under 'input_dir' and builds a per-file index containing path and phenophase year. The latter
-        is calculated via a +1 year offset for records from the summer solstice (Jun 21) onward.
+        Scans NetCDF files under 'input_dir' and builds a per-file index containing path and calendar year.
 
         Returns:
-            pd.DataFrame: File index with columns ['path', 'phenophase_year'].
+            pd.DataFrame: File index with columns ['path', 'year'].
 
         Raises:
             FileNotFoundError: If no NetCDF files exist under `input_dir`.
@@ -84,10 +83,7 @@ class WeatherLoader:
             records.append({'path': f, 'date': date})
 
         df = pd.DataFrame(records)
-
-        m, d = df['date'].dt.month, df['date'].dt.day
-        after_spring = (m > 6) | ((m == 6) & (d >= 21))
-        df['phenophase_year'] = df['date'].dt.year + after_spring
+        df['year'] = df['date'].dt.year
 
         return df.drop(columns=['date'])
 
