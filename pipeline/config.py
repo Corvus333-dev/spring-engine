@@ -35,7 +35,3 @@ class DirConfig:
     def _create_dirs(self):
         for path in (self.meta, self.obs, self.grids):
             path.mkdir(parents=True, exist_ok=True)
-
-# Static initialization
-data_cfg = DataConfig()
-dir_cfg = DirConfig(data_cfg)
