@@ -24,7 +24,7 @@ class DataConfig:
 class DirConfig:
     def __init__(self, cfg: DataConfig):
         root = Path(__file__).resolve().parents[1]
-        data = root / 'data'
+        data = root / 'storage'
 
         self.meta = data / 'phenology' / 'metadata'
         self.obs = data / 'phenology' / 'observations' / str(cfg.species_id)

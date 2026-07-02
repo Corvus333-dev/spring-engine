@@ -33,5 +33,4 @@ dist/
 Thumbs.db
 
 # Project-specific data
-data/
-models/
+storage/
