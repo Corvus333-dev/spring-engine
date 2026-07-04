@@ -55,3 +55,28 @@ def _search_species(query: str, input_dir: Path) -> list[dict]:
             })
 
     return matches
+
+def export_features(ds, year, output_dir):
+    """
+    Exports weather features for a given year as a Hive-style partition of a Parquet dataset.
+
+    Args:
+        ds (xr.Dataset): Feature dataset with dimensions [lat, lon].
+        year (int): Year represented by the features.
+        output_dir (pathlib.Path): Parent directory that receives the `year=<year>` partition.
+
+    Raises:
+        Exception: If materialization or export fails. Any incomplete Parquet file is removed.
+    """
+    partition_dir = output_dir / f"year={year}" # Hive-style partition
+    partition_dir.mkdir(parents=True, exist_ok=True)
+
+    partition_file = partition_dir / 'data.parquet'
+
+    try:
+        df = ds.to_dataframe().reset_index() # IMPORTANT: materialize lazy dataset
+        df.to_parquet(partition_file, engine='pyarrow')
+    except Exception as e:
+        e.add_note(f"Failed to export partition: year={year}")
+        partition_file.unlink(missing_ok=True)
+        raise

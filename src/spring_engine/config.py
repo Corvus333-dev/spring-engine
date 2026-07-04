@@ -30,8 +30,10 @@ class DirConfig:
         self.obs = data / 'phenology' / 'observations' / str(cfg.species_id)
         self.grids = data / 'weather' / 'grids' / cfg.resolution
 
+        self.features = data / 'processed' / 'features'
+
         self._create_dirs()
 
     def _create_dirs(self):
-        for path in (self.meta, self.obs, self.grids):
+        for path in (self.meta, self.obs, self.grids, self.features):
             path.mkdir(parents=True, exist_ok=True)
