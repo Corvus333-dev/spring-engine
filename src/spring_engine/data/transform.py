@@ -2,41 +2,6 @@ import calendar
 import pandas as pd
 import xarray as xr
 
-def engineer_monthly_features(ds):
-    """
-    Aggregates daily weather data into monthly features by computing per-month means of temperature extrema and sums of
-    precipitation, chill accumulation, and growing degree-days (GDD).
-
-    Args:
-        ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon] and data variables
-            ['ppt', 'tmax', 'tmin', 'chill', 'gdd'].
-
-    Returns:
-        xr.Dataset: Feature dataset reduced to dimensions [lat, lon], with monthly-encoded data variable names
-            (e.g., oct_chill_sum, apr_tmax_mean, etc.).
-    """
-    features = {}
-
-    monthly_bins = {
-        'ppt_sum': ds.ppt.groupby('time.month').sum('time'),
-        'tmax_mean': ds.tmax.groupby('time.month').mean('time'),
-        'tmin_mean': ds.tmin.groupby('time.month').mean('time'),
-        'chill_sum': ds.chill.groupby('time.month').sum('time'),
-        'gdd_sum': ds.gdd.groupby('time.month').sum('time'),
-    }
-
-    for k, v in monthly_bins.items():
-        for month in v.month.values:
-            month_abbr = calendar.month_abbr[int(month)].lower()
-            name = f"{month_abbr}_{k}"
-
-            features[name] = (
-                v.sel(month=month)
-                .drop_vars('month') # Drop scalar coordinate for reconstruction
-            )
-
-    return xr.Dataset(features)
-
 def engineer_thermal_features(ds, chill_bounds, gdd_bounds):
     """
     Derives winter chill and growing degree-day (GDD) features from daily temperature ranges. Approximates relative
@@ -73,6 +38,66 @@ def engineer_thermal_features(ds, chill_bounds, gdd_bounds):
     ds['gdd'] = gdd
 
     return ds
+
+def engineer_monthly_features(ds):
+    """
+    Aggregates daily weather data into monthly features by computing per-month means of temperature extrema and sums of
+    precipitation, chill accumulation, and growing degree-days (GDD).
+
+    Args:
+        ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon] and data variables
+            ['ppt', 'tmax', 'tmin', 'chill', 'gdd'].
+
+    Returns:
+        xr.Dataset: Feature dataset reduced to dimensions [lat, lon], with monthly-encoded data variable names
+            (e.g., oct_chill_sum, apr_tmax_mean, etc.).
+    """
+    features = {}
+
+    monthly_bins = {
+        'ppt_sum': ds.ppt.groupby('time.month').sum('time'),
+        'tmax_mean': ds.tmax.groupby('time.month').mean('time'),
+        'tmin_mean': ds.tmin.groupby('time.month').mean('time'),
+        'chill_sum': ds.chill.groupby('time.month').sum('time'),
+        'gdd_sum': ds.gdd.groupby('time.month').sum('time'),
+    }
+
+    for k, v in monthly_bins.items():
+        for month in v.month.values:
+            month_abbr = calendar.month_abbr[int(month)].lower()
+            name = f"{month_abbr}_{k}"
+
+            features[name] = (
+                v.sel(month=month)
+                .drop_vars('month') # Drop scalar coordinate for reconstruction
+            )
+
+    return xr.Dataset(features)
+
+def export_features(ds, year, output_dir):
+    """
+    Exports weather features for a given year as a Hive-style partition of a Parquet dataset.
+
+    Args:
+        ds (xr.Dataset): Feature dataset with dimensions [lat, lon].
+        year (int): Year represented by the features.
+        output_dir (pathlib.Path): Parent directory that receives the `year=<year>` partition.
+
+    Raises:
+        Exception: If materialization or export fails. Any incomplete Parquet file is removed.
+    """
+    partition_dir = output_dir / f"year={year}" # Hive-style partition
+    partition_dir.mkdir(parents=True, exist_ok=True)
+
+    partition_file = partition_dir / 'data.parquet'
+
+    try:
+        df = ds.to_dataframe().reset_index() # IMPORTANT: materialize lazy dataset
+        df.to_parquet(partition_file, engine='pyarrow')
+    except Exception as e:
+        e.add_note(f"Failed to export partition: year={year}")
+        partition_file.unlink(missing_ok=True)
+        raise
 
 def compose_labels(df, trans_gap, cycle_gap):
     """
