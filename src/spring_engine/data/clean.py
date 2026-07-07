@@ -11,7 +11,6 @@ PHENOLOGY_SCHEMA = {
         'longitude': 'float32',
         'individual_id': 'int32',
         'observation_date': 'datetime64[ns]',
-        'day_of_year': 'int16',
         'phenophase_status': 'int8'
 }
 
@@ -171,8 +170,8 @@ def load_phenology_data(species_id, phenophase_id, input_dir):
 def clean_phenology_data(df, lat_bounds, lon_bounds):
     """
     Cleans phenology data by deduplicating on `observation_id` and filtering invalid rows. Validates non-negative
-    integer IDs, spatial (lat/lon) and temporal (DOY) bounds, date format (YYYY-MM-DD), date-DOY consistency, and
-    phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
+    integer IDs, spatial (lat/lon) bounds, date format (YYYY-MM-DD), and phenophase status ∈ {-1, 0, 1}. Logs counts of
+    failed checks to console.
 
     Args:
         df (pd.DataFrame): DataFrame of observation entries, with a fixed column schema.
@@ -195,25 +194,20 @@ def clean_phenology_data(df, lat_bounds, lon_bounds):
         masks[f"invalid '{col}'"] = (s.isna() | (s % 1 != 0) | (s < 0))
         df[col] = s
 
-    st_bbox = {'latitude': lat_bounds, 'longitude': lon_bounds, 'day_of_year': (1, 366)}
+    spatial_bounds = {'latitude': lat_bounds, 'longitude': lon_bounds}
 
-    for col, (min_val, max_val) in st_bbox.items():
+    for col, (min_val, max_val) in spatial_bounds.items():
         s = pd.to_numeric(df[col], errors='coerce')
         masks[f"invalid {col}"] = s.isna() | (s < min_val) | (s > max_val)
         df[col] = s
 
-    parsed_dates = pd.to_datetime(df['observation_date'], format='%Y-%m-%d', errors='coerce')
-    masks["invalid 'observation_date'"] = parsed_dates.isna()
-    df['observation_date'] = parsed_dates
+    s = pd.to_datetime(df['observation_date'], format='%Y-%m-%d', errors='coerce')
+    masks["invalid 'observation_date'"] = s.isna()
+    df['observation_date'] = s
 
-    valid_dates = ~masks["invalid 'observation_date'"]
-    expected_doy = parsed_dates.dt.dayofyear
-    actual_doy = df['day_of_year']
-    masks["'day_of_year' mismatch"] = valid_dates & (actual_doy != expected_doy)
-
-    uny = pd.to_numeric(df['phenophase_status'], errors='coerce')
-    masks["invalid 'phenophase_status'"] = ~uny.isin((-1, 0, 1))
-    df['phenophase_status'] = uny
+    s = pd.to_numeric(df['phenophase_status'], errors='coerce')
+    masks["invalid 'phenophase_status'"] = ~s.isin((-1, 0, 1))
+    df['phenophase_status'] = s
 
     invalid = pd.Series(False, index=df.index)
     for issue, mask in masks.items():
