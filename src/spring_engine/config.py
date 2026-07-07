@@ -23,7 +23,7 @@ class DataConfig:
 
 class DirConfig:
     def __init__(self, cfg: DataConfig):
-        root = Path(__file__).resolve().parents[1]
+        root = Path(__file__).resolve().parents[2]
         data = root / 'storage'
 
         self.meta = data / 'phenology' / 'metadata'
