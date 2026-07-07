@@ -26,14 +26,12 @@ def write_features_store(ds, year, output_dir):
         partition_file.unlink(missing_ok=True)
         raise
 
-def write_labels_store(df, species_id, phenophase_id, start_year, end_year, output_dir):
+def write_labels_store(df, start_year, end_year, output_dir):
     """
     Saves phenology labels representing a range [start_year, end_year] as a Parquet dataset.
 
     Args:
         df (pd.DataFrame): Phenophase onset labels, including spatial coordinates and metadata.
-        species_id (int): Unique species identifier.
-        phenophase_id (int): Unique phenophase identifier.
         start_year (int): First year of data represented by the labels.
         end_year (int): Last year of data represented by the labels.
         output_dir (pathlib.Path): Receives label files.
@@ -41,7 +39,7 @@ def write_labels_store(df, species_id, phenophase_id, start_year, end_year, outp
     Raises:
         Exception: If export fails. Any incomplete Parquet file is removed.
     """
-    labels_file = output_dir / f"{species_id}_{phenophase_id}_{start_year}_{end_year}.parquet"
+    labels_file = output_dir / f"{start_year}_{end_year}.parquet"
 
     try:
         df.to_parquet(labels_file, engine='pyarrow')
