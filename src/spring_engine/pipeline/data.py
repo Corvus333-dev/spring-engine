@@ -17,11 +17,11 @@ class DataPipeline:
         self._ingest_data()
 
         df = self._clean_phenology_data()
-        self._transform_phenology_data(df)
+        label_sites = self._transform_phenology_data(df)
 
         for year in range(self.data_cfg.start_year - 1, self.data_cfg.end_year + 1):
             ds = self._clean_weather_data(year)
-            self._transform_weather_data(ds, year)
+            self._transform_weather_data(ds, label_sites, year)
 
     def _ingest_data(self):
         ingest.download_phenology_metadata(output_dir=self.dir_cfg.meta)
@@ -68,8 +68,8 @@ class DataPipeline:
             lon_bounds=self.data_cfg.lon_bounds
         )
 
-    def _transform_phenology_data(self, df: pd.DataFrame):
-        df = transform.compose_labels(
+    def _transform_phenology_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        df, label_sites = transform.compose_labels(
             df=df,
             trans_gap=self.data_cfg.trans_gap,
             cycle_gap=self.data_cfg.cycle_gap
@@ -82,7 +82,11 @@ class DataPipeline:
             output_dir=self.dir_cfg.labels
         )
 
-    def _transform_weather_data(self, ds: xr.Dataset, year: int):
+        return label_sites
+
+    def _transform_weather_data(self, ds: xr.Dataset, label_sites: pd.DataFrame, year: int):
+        ds = transform.select_weather_subset(ds, label_sites)
+
         ds = transform.engineer_thermal_features(
             ds=ds,
             chill_bounds=self.data_cfg.chill_bounds,
