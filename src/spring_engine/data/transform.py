@@ -13,7 +13,8 @@ def compose_labels(df, trans_gap, cycle_gap):
           exist within the preceding `cycle_gap` days. This effectively retains the earliest detected phenophase at each
           site for every phenological cycle.
 
-    Extracts spatial coordinates for each unique site represented in the curated phenophase onset labels.
+    Calculates event onset day of year via 365-day year standardization to account for leap years. Extracts spatial
+    coordinates for each unique site represented in the curated phenophase onset labels.
 
     Args:
         df (pd.DataFrame): Phenology DataFrame with fixed column schema (enforced in pipeline.clean).
@@ -22,10 +23,10 @@ def compose_labels(df, trans_gap, cycle_gap):
 
     Returns:
         tuple[pd.DataFrame, pd.DataFrame]:
-            - labels: Curated phenophase onset labels with 'onset_date' column added to original schema.
+            - labels: Curated phenophase onset labels with columns [onset_date, onset_doy] added to original schema.
             - label_sites: Unique label site coordinates with columns [latitude, longitude].
     """
-    df = df.sort_values(['site_id', 'individual_id', 'observation_date']).copy()
+    df = df.sort_values(['site_id', 'individual_id', 'observation_date'])
 
     df['prev_status'] = df.groupby(['site_id', 'individual_id'])['phenophase_status'].shift(1)
     df['prev_date'] = df.groupby(['site_id', 'individual_id'])['observation_date'].shift(1)
@@ -41,6 +42,12 @@ def compose_labels(df, trans_gap, cycle_gap):
         .apply(lambda x: _filter_consecutive_onsets(x, cycle_gap))
         .drop(columns=['prev_status', 'prev_date'])
     )
+
+    is_leap_year = labels['onset_date'].dt.is_leap_year
+    post_feb = labels['onset_date'].dt.month > 2
+
+    labels['onset_doy'] = labels['onset_date'].dt.dayofyear
+    labels.loc[is_leap_year & post_feb, 'onset_doy'] -= 1
 
     label_sites = labels[['latitude', 'longitude']].drop_duplicates().reset_index(drop=True)
 
