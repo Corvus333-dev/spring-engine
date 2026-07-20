@@ -38,8 +38,9 @@ def compose_labels(df, trans_gap, cycle_gap):
     pool['onset_date'] = pool['prev_date'] + (pool['observation_date'] - pool['prev_date']) / 2
 
     labels = (
-        pool.groupby('site_id', group_keys=False)
-        .apply(lambda x: _filter_consecutive_onsets(x, cycle_gap))
+        pool.groupby('site_id', group_keys=True)
+        .apply(_filter_consecutive_onsets, cycle_gap)
+        .reset_index(level='site_id')
         .drop(columns=['prev_status', 'prev_date'])
     )
 
@@ -49,7 +50,7 @@ def compose_labels(df, trans_gap, cycle_gap):
     labels['onset_doy'] = labels['onset_date'].dt.dayofyear
     labels.loc[is_leap_year & post_feb, 'onset_doy'] -= 1
 
-    label_sites = labels[['latitude', 'longitude']].drop_duplicates().reset_index(drop=True)
+    label_sites = labels[['site_id', 'latitude', 'longitude']].drop_duplicates().reset_index(drop=True)
 
     return labels, label_sites
 
