@@ -65,17 +65,18 @@ def _filter_consecutive_onsets(site_group, cycle_gap):
     Returns:
         pd.DataFrame: Filtered event onset records.
     """
-    valid_rows = []
     last_onset = pd.NaT
+    cycle_delta = pd.Timedelta(days=cycle_gap)
+    cycle_indices = []
 
     site_group = site_group.sort_values('onset_date')
 
-    for _, row in site_group.iterrows():
-        if pd.isna(last_onset) or (row['onset_date'] - last_onset) > pd.Timedelta(days=cycle_gap):
-            valid_rows.append(row)
+    for idx, row in site_group.iterrows():
+        if pd.isna(last_onset) or (row['onset_date'] - last_onset) > cycle_delta:
+            cycle_indices.append(idx)
             last_onset = row['onset_date']
 
-    return pd.DataFrame(valid_rows)
+    return site_group.loc[cycle_indices]
 
 def select_weather_subset(ds, label_sites):
     """
