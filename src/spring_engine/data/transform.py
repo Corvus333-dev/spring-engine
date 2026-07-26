@@ -85,7 +85,7 @@ def select_weather_subset(ds, label_sites):
 
     Args:
         ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon].
-        label_sites (pd.DataFrame): Unique label sites DataFrame with columns [latitude, longitude].
+        label_sites (pd.DataFrame): Unique label sites DataFrame with columns [site_id, latitude, longitude].
 
     Returns:
         xr.Dataset: Weather subset with dimensions [time, point] and coordinates [time, lat(point), lon(point)].
