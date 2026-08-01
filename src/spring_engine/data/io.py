@@ -32,18 +32,16 @@ def write_features_store(ds, year, output_dir):
         output_dir (pathlib.Path): Parent directory that receives the `year=<year>` partition.
 
     Raises:
-        Exception: If materialization or export fails. Any incomplete Parquet file is removed.
-
-    Notes:
-        Triggers high-compute eager evaluation of the xarray dataset.
+        Exception: If export fails. Any incomplete Parquet file is removed.
     """
     partition_dir = output_dir / f"year={year}" # Hive-style partition
     partition_dir.mkdir(parents=True, exist_ok=True)
 
     partition_file = partition_dir / 'data.parquet'
 
+    df = ds.to_dataframe().reset_index()
+
     try:
-        df = ds.to_dataframe().reset_index() # IMPORTANT: materialize lazy dataset
         df.to_parquet(partition_file, engine='pyarrow')
     except Exception as e:
         e.add_note(f"Failed to export partition: year={year}")

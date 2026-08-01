@@ -80,7 +80,7 @@ def _filter_consecutive_onsets(site_group, cycle_gap):
 
 def select_weather_subset(ds, label_sites):
     """
-    Subsets the weather dataset by selecting the nearest grid cells for all unique label sites. This reduces the spatial
+    Subsets the weather dataset by selecting the nearest grid cells for all unique label sites. This prunes the spatial
     domain prior to feature engineering so that features are computed only for grid cells associated with label sites.
 
     Args:
@@ -89,13 +89,17 @@ def select_weather_subset(ds, label_sites):
 
     Returns:
         xr.Dataset: Weather subset with dimensions [time, point] and coordinates [time, lat(point), lon(point)].
+
+    Notes:
+        Triggers eager evaluation after spatial pruning, as downstream feature engineering is substantially more
+        efficient on the materialized weather subset.
     """
     lat = xr.DataArray(label_sites['latitude'], dims='point')
     lon = xr.DataArray(label_sites['longitude'], dims='point')
 
     ds = ds.sel(lat=lat, lon=lon, method='nearest')
 
-    return ds
+    return ds.load() # IMPORTANT: materialize lazy dataset
 
 def engineer_thermal_features(ds, chill_bounds, gdd_bounds):
     """
