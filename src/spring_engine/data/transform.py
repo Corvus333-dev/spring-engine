@@ -144,31 +144,18 @@ def engineer_monthly_features(ds):
     precipitation, chill accumulation, and growing degree-days (GDD).
 
     Args:
-        ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon] and data variables
-            ['ppt', 'tmax', 'tmin', 'chill', 'gdd'].
+        ds (xr.Dataset): Weather dataset with dimensions [time, point], including coordinates [lat(point), lon(point)],
+            and data variables ['ppt', 'tmax', 'tmin', 'chill', 'gdd'].
 
     Returns:
-        xr.Dataset: Feature dataset reduced to dimensions [lat, lon], with monthly-encoded data variable names
-            (e.g., oct_chill_sum, apr_tmax_mean, etc.).
+        xr.Dataset: Weather dataset with dimensions [month, point], including coordinates [lat(point), lon(point)], and
+            data variables ['ppt_sum', 'tmax_mean', 'tmin_mean', 'chill_sum', 'gdd_sum'].
     """
-    features = {}
 
-    monthly_bins = {
+    return xr.Dataset({
         'ppt_sum': ds.ppt.groupby('time.month').sum('time'),
         'tmax_mean': ds.tmax.groupby('time.month').mean('time'),
         'tmin_mean': ds.tmin.groupby('time.month').mean('time'),
         'chill_sum': ds.chill.groupby('time.month').sum('time'),
         'gdd_sum': ds.gdd.groupby('time.month').sum('time'),
-    }
-
-    for k, v in monthly_bins.items():
-        for month in v.month.values:
-            month_abbr = calendar.month_abbr[int(month)].lower()
-            name = f"{month_abbr}_{k}"
-
-            features[name] = (
-                v.sel(month=month)
-                .drop_vars('month') # Drop scalar coordinate for reconstruction
-            )
-
-    return xr.Dataset(features)
+    })
