@@ -1,4 +1,4 @@
-import calendar
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -78,28 +78,58 @@ def _filter_consecutive_onsets(site_group, cycle_gap):
 
     return site_group.loc[cycle_indices]
 
-def select_weather_subset(ds, label_sites):
+def subset_weather(ds, label_sites):
     """
-    Subsets the weather dataset by selecting the nearest grid cells for all unique label sites. This prunes the spatial
-    domain prior to feature engineering so that features are computed only for grid cells associated with label sites.
+    Subsets the weather dataset to nearest grid cells for all label sites, then removes duplicate grid cells. This
+    prunes the spatial domain prior to downstream feature engineering so that features are computed only for unique
+    grid cells associated with label sites.
 
     Args:
         ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon].
         label_sites (pd.DataFrame): Unique label sites DataFrame with columns [site_id, latitude, longitude].
 
     Returns:
-        xr.Dataset: Weather subset with dimensions [time, point] and coordinates [time, lat(point), lon(point)].
+        tuple[xr.Dataset, pd.DataFrame]:
+            subset: Weather subset with dimensions [time, cell_id].
+            crosswalk: Mapping of label `site_id` to weather `cell_id`.
 
     Notes:
         Triggers eager evaluation after spatial pruning, as downstream feature engineering is substantially more
         efficient on the materialized weather subset.
     """
-    lat = xr.DataArray(label_sites['latitude'], dims='point')
-    lon = xr.DataArray(label_sites['longitude'], dims='point')
+    ds = _assign_cell_id(ds)
 
-    ds = ds.sel(lat=lat, lon=lon, method='nearest')
+    lat = xr.DataArray(label_sites['latitude'], dims='cell')
+    lon = xr.DataArray(label_sites['longitude'], dims='cell')
 
-    return ds.load() # IMPORTANT: materialize lazy dataset
+    matched = ds.sel(lat=lat, lon=lon, method='nearest')
+    crosswalk = pd.DataFrame({'site_id': label_sites['site_id'].to_numpy(), 'cell_id': matched['cell_id'].values})
+
+    subset = (
+        matched.swap_dims({'cell': 'cell_id'})
+        .drop_duplicates(dim='cell_id')
+        .drop_vars('cell')
+        .load() # IMPORTANT: materialize lazy dataset
+    )
+
+    return subset, crosswalk
+
+def _assign_cell_id(ds):
+    """
+    Assigns a unique integer ID to each grid cell as a 2D coordinate. These IDs are deterministic across time
+    (e.g., yearly partitions) for a grid with fixed spatial ordering and shape.
+
+    Args:
+        ds (xr.Dataset): Weather dataset with dimensions [time, lat, lon].
+
+    Returns:
+        xr.Dataset: Weather dataset with dimensions [time, lat, lon] and added coordinates [cell_id(lat, lon)].
+
+    """
+    n_lat, n_lon = ds.sizes['lat'], ds.sizes['lon']
+    cell_id = np.arange(n_lat * n_lon).reshape(n_lat, n_lon)
+
+    return ds.assign_coords(cell_id=(('lat', 'lon'), cell_id))
 
 def engineer_thermal_features(ds, chill_bounds, gdd_bounds):
     """
