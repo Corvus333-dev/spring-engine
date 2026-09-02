@@ -17,11 +17,14 @@ class DataPipeline:
         self._ingest_data()
 
         df = self._clean_phenology_data()
-        label_sites = self._transform_phenology_data(df)
+        labels, label_sites = self._transform_phenology_data(df)
 
         for year in range(self.data_cfg.start_year - 1, self.data_cfg.end_year + 1):
             ds = self._clean_weather_data(year)
-            self._transform_weather_data(ds, label_sites, year)
+            features, crosswalk = self._transform_weather_data(ds, label_sites)
+            self._write_data(features, year)
+
+        self._write_data(labels)
 
     def _ingest_data(self):
         ingest.download_phenology_metadata(output_dir=self.dir_cfg.meta)
@@ -68,24 +71,15 @@ class DataPipeline:
             lon_bounds=self.data_cfg.lon_bounds
         )
 
-    def _transform_phenology_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        df, label_sites = transform.compose_labels(
+    def _transform_phenology_data(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        return transform.compose_labels(
             df=df,
             trans_gap=self.data_cfg.trans_gap,
             cycle_gap=self.data_cfg.cycle_gap
         )
 
-        io.write_labels_store(
-            df=df,
-            start_year=self.data_cfg.start_year,
-            end_year=self.data_cfg.end_year,
-            output_dir=self.dir_cfg.labels
-        )
-
-        return label_sites
-
-    def _transform_weather_data(self, ds: xr.Dataset, label_sites: pd.DataFrame, year: int):
-        ds = transform.select_weather_subset(ds, label_sites)
+    def _transform_weather_data(self, ds: xr.Dataset, label_sites: pd.DataFrame) -> tuple[xr.Dataset, pd.DataFrame]:
+        ds, crosswalk = transform.subset_weather(ds, label_sites)
 
         ds = transform.engineer_thermal_features(
             ds=ds,
@@ -95,8 +89,21 @@ class DataPipeline:
 
         ds = transform.engineer_monthly_features(ds)
 
-        io.write_features_store(
-            ds=ds,
-            year=year,
-            output_dir=self.dir_cfg.features
-        )
+        return ds, crosswalk
+
+    def _write_data(self, data: pd.DataFrame | xr.Dataset, year: int | None = None):
+        if isinstance(data, pd.DataFrame):
+            io.write_labels_store(
+                df=data,
+                start_year=self.data_cfg.start_year,
+                end_year=self.data_cfg.end_year,
+                output_dir=self.dir_cfg.labels
+            )
+        elif isinstance(data, xr.Dataset):
+            io.write_features_store(
+                ds=data,
+                year=year,
+                output_dir=self.dir_cfg.features
+            )
+        else:
+            raise TypeError(f"Invalid data type: {type(data)}")
