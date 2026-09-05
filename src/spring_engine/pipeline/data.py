@@ -19,11 +19,19 @@ class DataPipeline:
         df = self._clean_phenology_data()
         labels, label_sites = self._transform_phenology_data(df)
 
+        crosswalk = None
+
         for year in range(self.data_cfg.start_year - 1, self.data_cfg.end_year + 1):
             ds = self._clean_weather_data(year)
-            features, crosswalk = self._transform_weather_data(ds, label_sites)
+            features, year_crosswalk = self._transform_weather_data(ds, label_sites)
             self._write_data(features, year)
 
+            if crosswalk is None:
+               crosswalk = year_crosswalk
+            elif not crosswalk.equals(year_crosswalk):
+               raise ValueError(f"Variant crosswalk for year: {year}")
+
+        labels = labels.merge(crosswalk, how='left', on='site_id', validate='many_to_one')
         self._write_data(labels)
 
     def _ingest_data(self):
