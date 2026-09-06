@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import TYPE_CHECKING
+from tqdm.auto import tqdm
 import xarray as xr
 
 from spring_engine.data import clean, ingest, io, transform
@@ -19,14 +20,16 @@ class DataPipeline:
         df = self._clean_phenology_data()
         labels, label_sites = self._transform_phenology_data(df)
 
-        crosswalk = None
+        years = range(self.data_cfg.start_year - 1, self.data_cfg.end_year + 1)
+        pbar = tqdm(years, desc="Processing weather data")
 
-        for year in range(self.data_cfg.start_year - 1, self.data_cfg.end_year + 1):
+        for i, year in enumerate(pbar):
             ds = self._clean_weather_data(year)
             features, year_crosswalk = self._transform_weather_data(ds, label_sites)
             self._write_data(features, year)
 
-            if crosswalk is None:
+            # Establish reference crosswalk and verify grid consistency
+            if i == 0:
                crosswalk = year_crosswalk
             elif not crosswalk.equals(year_crosswalk):
                raise ValueError(f"Variant crosswalk for year: {year}")
