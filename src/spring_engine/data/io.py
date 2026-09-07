@@ -70,7 +70,7 @@ def read_labels_store(start_year, end_year, input_dir):
 
     return pd.read_parquet(labels_file, engine='pyarrow')
 
-def read_feature_store(start_year, end_year, input_dir):
+def read_features_store(start_year, end_year, input_dir):
     """
     Reads weather features for a range [start_year, end_year] from Hive-style partitions of a Parquet dataset.
 
