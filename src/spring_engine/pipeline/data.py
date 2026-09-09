@@ -37,6 +37,8 @@ class DataPipeline:
         labels = labels.merge(crosswalk, how='left', on='site_id', validate='many_to_one')
         self._write_data(labels)
 
+        labels, features = self._read_data()
+
     def _ingest_data(self):
         ingest.download_phenology_metadata(output_dir=self.dir_cfg.meta)
 
@@ -118,3 +120,18 @@ class DataPipeline:
             )
         else:
             raise TypeError(f"Invalid data type: {type(data)}")
+
+    def _read_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        labels = io.read_labels_store(
+            start_year=self.data_cfg.start_year,
+            end_year=self.data_cfg.end_year,
+            input_dir=self.dir_cfg.labels
+        )
+
+        features = io.read_features_store(
+            start_year=self.data_cfg.start_year - 1,
+            end_year=self.data_cfg.end_year,
+            input_dir=self.dir_cfg.features
+        )
+
+        return labels, features
