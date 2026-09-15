@@ -24,14 +24,15 @@ class DataConfig:
 class DirConfig:
     def __init__(self, cfg: DataConfig):
         root = Path(__file__).resolve().parents[2]
-        data = root / 'storage'
+        storage = root / 'storage'
+        processed = storage / 'processed' / str(cfg.species_id) / str(cfg.phenophase_id)
 
-        self.meta = data / 'phenology' / 'metadata'
-        self.obs = data / 'phenology' / 'observations' / str(cfg.species_id)
-        self.grids = data / 'weather' / 'grids' / cfg.resolution
+        self.meta = storage / 'phenology' / 'metadata'
+        self.obs = storage / 'phenology' / 'observations' / str(cfg.species_id)
+        self.grids = storage / 'weather' / 'grids' / cfg.resolution
 
-        self.labels = data / 'processed' / 'labels' / str(cfg.species_id) / str(cfg.phenophase_id)
-        self.features = data / 'processed' / 'features' # Year partitions handled in I/O layer
+        self.labels = processed / 'labels'
+        self.features = processed / 'features' # Year partitions handled in I/O layer
 
         self._create_dirs()
 
