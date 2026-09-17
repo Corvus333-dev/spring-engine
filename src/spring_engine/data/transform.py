@@ -191,3 +191,59 @@ def engineer_monthly_features(ds):
         'chill_sum': ds.chill.groupby('time.month').sum('time'),
         'gdd_sum': ds.gdd.groupby('time.month').sum('time'),
     })
+
+def compose_examples(labels, features, max_lag=12):
+    """
+    Assembles one supervised learning example per phenology label by attaching `max_lag` months of lagged weather
+    features for the label's onset month and corresponding grid cell.
+
+    Args:
+        labels (pd.DataFrame): Phenology labels, including columns ['cell_id', 'onset_date'].
+        features (pd.DataFrame): Weather features, including columns
+            ['cell_id', 'year', 'month', 'ppt_sum', 'tmax_mean', 'tmin_mean', 'chill_sum', 'gdd_sum'].
+        max_lag (int): Number of consecutive months preceding onset month to use for lagged feature construction. Must
+            be in range [1, 12]. Defaults to 12.
+
+    Returns:
+        pd.DataFrame: Examples dataset, retaining labels schema (including target variables `sin_doy` and `cos_doy`),
+        with `max_lag` months of lagged features appended.
+
+    Raises:
+        ValueError: If `max_lag` is not in range [1, 12].
+
+    Notes:
+        Monthly features are expected to be continuous for each grid cell so that each groupwise shift corresponds to
+        one monthly lag. This may be presumed from deriving monthly aggregates from daily PRISM climate grids.
+    """
+    if not 1 <= max_lag <= 12:
+        raise ValueError(f"Invalid lag window: {max_lag}")
+
+    labels = labels.copy()
+    features = features.copy()
+
+    labels['period'] = labels['onset_date'].dt.to_period('M') # Anchor (month of onset)
+
+    features['period'] = pd.PeriodIndex.from_fields(
+        year=features['year'].astype(int), # Hive-style partition category to int
+        month=features['month'],
+        freq='M'
+    )
+    features.sort_values(['cell_id', 'period'], inplace=True)
+
+    feature_cols = ['ppt_sum', 'tmax_mean', 'tmin_mean', 'chill_sum', 'gdd_sum']
+    lag_cols = []
+
+    grouped = features.groupby('cell_id')
+
+    for col in feature_cols:
+        for lag in range(1, max_lag + 1):
+            lag_col = f"{col}_lag{lag}"
+            features[lag_col] = grouped[col].shift(lag)
+            lag_cols.append(lag_col)
+
+    lag_table = features[['cell_id', 'period'] + lag_cols]
+
+    return (
+        labels.merge(lag_table, how='left', on=['cell_id', 'period'], validate='many_to_one')
+        .drop(columns='period')
+    )
