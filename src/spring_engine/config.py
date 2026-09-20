@@ -31,12 +31,11 @@ class DirConfig:
         self.obs = storage / 'phenology' / 'observations' / str(cfg.species_id)
         self.grids = storage / 'weather' / 'grids' / cfg.resolution
 
-        self.labels = processed / 'labels'
         self.features = processed / 'features' # Year partitions handled in I/O layer
         self.examples = processed / 'examples'
 
         self._create_dirs()
 
     def _create_dirs(self):
-        for path in (self.meta, self.obs, self.grids, self.labels, self.features, self.examples):
+        for path in (self.meta, self.obs, self.grids, self.features, self.examples):
             path.mkdir(parents=True, exist_ok=True)
