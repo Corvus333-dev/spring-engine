@@ -9,9 +9,16 @@ PHENOLOGY_SCHEMA = {
         'site_id': 'int32',
         'latitude': 'float32',
         'longitude': 'float32',
+        'state': 'string',
         'individual_id': 'int32',
         'observation_date': 'datetime64[ns]',
         'phenophase_status': 'int8'
+}
+
+CONUS = {
+    "AL", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
+    "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND",
+    "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 }
 
 class WeatherLoader:
@@ -170,8 +177,8 @@ def load_phenology_data(species_id, phenophase_id, input_dir):
 def clean_phenology_data(df, lat_bounds, lon_bounds):
     """
     Cleans phenology data by deduplicating on `observation_id` and filtering invalid rows. Validates non-negative
-    integer IDs, spatial (lat/lon) bounds, date format (YYYY-MM-DD), and phenophase status ∈ {-1, 0, 1}. Logs counts of
-    failed checks to console.
+    integer IDs, spatial (lat/lon) bounds, contiguous U.S. (i.e., CONUS) membership, date format (YYYY-MM-DD), and
+    phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
 
     Args:
         df (pd.DataFrame): DataFrame of observation entries, with a fixed column schema.
@@ -198,8 +205,12 @@ def clean_phenology_data(df, lat_bounds, lon_bounds):
 
     for col, (min_val, max_val) in spatial_bounds.items():
         s = pd.to_numeric(df[col], errors='coerce')
-        masks[f"invalid {col}"] = s.isna() | (s < min_val) | (s > max_val)
+        masks[f"invalid '{col}'"] = s.isna() | (s < min_val) | (s > max_val)
         df[col] = s
+
+    s = df['state'].astype('string').str.upper().str.strip()
+    masks["invalid 'state'"] = s.isna() | ~s.isin(CONUS)
+    df['state'] = s
 
     s = pd.to_datetime(df['observation_date'], format='%Y-%m-%d', errors='coerce')
     masks["invalid 'observation_date'"] = s.isna()
