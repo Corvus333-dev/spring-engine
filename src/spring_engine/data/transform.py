@@ -176,11 +176,11 @@ def engineer_monthly_features(ds):
     precipitation, chill accumulation, and growing degree-days (GDD).
 
     Args:
-        ds (xr.Dataset): Weather dataset with dimensions [time, point], including coordinates [lat(point), lon(point)],
-            and data variables ['ppt', 'tmax', 'tmin', 'chill', 'gdd'].
+        ds (xr.Dataset): Weather dataset with dimensions [time, cell_id], including coordinates [cell_id(lat, lon)], and
+        data variables ['ppt', 'tmax', 'tmin', 'chill', 'gdd'].
 
     Returns:
-        xr.Dataset: Weather dataset with dimensions [month, point], including coordinates [lat(point), lon(point)], and
+        xr.Dataset: Weather dataset with dimensions [month, cell_id], including coordinates [cell_id(lat, lon)], and
             data variables ['ppt_sum', 'tmax_mean', 'tmin_mean', 'chill_sum', 'gdd_sum'].
     """
 
