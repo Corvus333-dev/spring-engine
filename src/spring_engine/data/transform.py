@@ -49,8 +49,8 @@ def compose_labels(df, trans_gap, cycle_gap):
 
     # Time is a flat circle
     theta = 2 * np.pi * (labels['onset_doy'] - 1) / days_in_year
-    labels['sin_doy'] = np.sin(theta)
-    labels['cos_doy'] = np.cos(theta)
+    labels['sin_doy'] = np.sin(theta).astype(np.float32)
+    labels['cos_doy'] = np.cos(theta).astype(np.float32)
 
     label_sites = labels[['site_id', 'latitude', 'longitude']].drop_duplicates().reset_index(drop=True)
 
@@ -129,7 +129,7 @@ def _assign_cell_id(ds):
 
     """
     n_lat, n_lon = ds.sizes['lat'], ds.sizes['lon']
-    cell_id = np.arange(n_lat * n_lon).reshape(n_lat, n_lon)
+    cell_id = np.arange(n_lat * n_lon, dtype=np.int32).reshape(n_lat, n_lon)
 
     return ds.assign_coords(cell_id=(('lat', 'lon'), cell_id))
 
