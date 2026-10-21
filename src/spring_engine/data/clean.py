@@ -16,9 +16,9 @@ PHENOLOGY_SCHEMA = {
 }
 
 CONUS = {
-    "AL", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "ID", "IL", "IN", "IA", "KS", "KY", "LA",
-    "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND",
-    "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+    'AL', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA',
+    'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND',
+    'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
 }
 
 class WeatherLoader:
@@ -267,7 +267,7 @@ def clean_weather_data(ds, variables, lat_bounds, lon_bounds):
         warnings.warn(
             f"Unexpected dimensions and/or variables are present: {extra}. "
             "This may result in suboptimal Dask operations",
-            category=UserWarning
+            category=UserWarning, stacklevel=2
         )
 
     # Downcast for consistency with phenology schema
