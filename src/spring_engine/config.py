@@ -19,7 +19,7 @@ class DataConfig:
     gdd_bounds = (10.0, 30.0)
 
     trans_gap: int = 14
-    cycle_gap: int = 182
+    cycle_gap: int = 274
 
 class DirConfig:
     def __init__(self, cfg: DataConfig):
