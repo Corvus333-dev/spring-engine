@@ -1,6 +1,7 @@
 import pandas as pd
 from pathlib import Path
 import json
+from scipy.stats import circmean, median_abs_deviation
 import warnings
 import xarray as xr
 
@@ -295,3 +296,60 @@ def clean_weather_data(ds, variables, lat_bounds, lon_bounds):
         raise ValueError("Longitude coordinates are out of bounds")
 
     return ds
+
+def clean_labels(df, k=3.5, alert=0.03):
+    """
+    Cleans labels by removing seasonal outliers relative to a unimodal seasonal cluster.
+
+    Args:
+        df (pd.DataFrame): Phenophase onset labels, including column 'onset_doy'.
+        k (float): Outlier threshold as a multiple of the robust scale (i.e., number of sigmas). Defaults to 3.5.
+        alert (float): Maximum disregardable outlier ratio. Outliers are dropped regardless. Defaults to 0.03.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame]:
+            - cleaned: Inlier phenophase onset labels.
+            - dropped: Outlier phenophase onset labels.
+
+    Raises:
+        ValueError: If 'onset_doy' contains NaN values.
+
+    Warns:
+        UserWarning: If the outlier ratio exceeds 'alert'.
+    """
+    is_outlier = _flag_outliers(df['onset_doy'], k)
+    ratio = is_outlier.mean()
+
+    if ratio > alert:
+        warnings.warn(
+            f"{ratio:.1%} of labels flagged as seasonal outliers. "
+            "Data quality review and/or filter adjustment is recommended",
+            category=UserWarning, stacklevel=2
+        )
+
+    cleaned = df.loc[~is_outlier].reset_index(drop=True)
+    dropped = df.loc[is_outlier].reset_index(drop=True)
+
+    return cleaned, dropped
+
+def _flag_outliers(samples, k, period=365.25, min_scale=1.0):
+    """
+    Flags outliers by comparing offsets from the circular mean to a Gaussian-normalized median absolute deviation.
+
+    Args:
+        samples (pd.Series): Angle-like observations in the range [0, period].
+        k (float): Outlier threshold as a multiple of the robust scale (i.e., number of sigmas).
+        period (float): Maximum principal value of the circular variable (lower bound is zero). Defaults to 365.25.
+        min_scale (float): Lower bound on the robust scale. Guards against MAD ≈ 0 for tight clusters. Defaults to 1.0.
+
+    Returns:
+        pd.Series: Boolean Series that is True where an observation is flagged as an outlier.
+
+    Raises:
+        ValueError: If 'samples' contains NaN values (raised by 'circmean').
+    """
+    center = circmean(samples, high=period, low=0, nan_policy='raise')
+    offsets = (samples - center + period / 2) % period - period / 2 # Wrap offsets to [-period / 2, period / 2)
+    scale = max(median_abs_deviation(offsets, scale='normal'), min_scale)
+
+    return offsets.abs() > k * scale
