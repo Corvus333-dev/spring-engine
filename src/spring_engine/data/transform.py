@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.stats import circmean, median_abs_deviation
 import xarray as xr
 
 def compose_labels(df, trans_gap, cycle_gap):
@@ -79,6 +80,31 @@ def _filter_consecutive_onsets(site_group, cycle_gap):
             last_onset = row['onset_date']
 
     return site_group.loc[cycle_indices]
+
+def flag_seasonal_outliers(df, k=3.5, period=365.25, min_scale=1.0):
+    """
+    Flags seasonal outliers relative to a dominant unimodal seasonal cluster by comparing offsets from the circular mean
+    to a Gaussian-normalized median absolute deviation.
+
+    Args:
+        df (pd.DataFrame): Curated phenophase onset labels, including column 'onset_doy'.
+        k (float): Coefficient of the robust scale (i.e., number of sigmas). Defaults to 3.5.
+        period (float): Maximum principal value of the circular variable (lower bound is zero). Defaults to 365.25.
+        min_scale (float): Lower bound on the robust scale. Guards against MAD ≈ 0 for tight clusters. Defaults to 1.0.
+
+    Returns:
+        pd.DataFrame: Curated phenophase onset labels with added boolean column 'is_seasonal_outlier'.
+
+    Raises:
+        ValueError: If 'onset_doy' contains NaN values (raised by 'circmean').
+    """
+    s = df['onset_doy']
+
+    center = circmean(s, high=period, low=0, nan_policy='raise')
+    offsets = (s - center + period / 2) % period - period / 2 # Wrap offsets to [-period / 2, period / 2)
+    scale = max(median_abs_deviation(offsets, scale='normal'), min_scale)
+
+    return df.assign(is_seasonal_outlier=offsets.abs() > k * scale)
 
 def subset_weather(ds, label_sites):
     """
