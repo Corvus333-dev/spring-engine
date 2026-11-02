@@ -54,11 +54,13 @@ class DataPipeline:
             lon_bounds=self.data_cfg.lon_bounds
         )
 
-        return transform.compose_labels(
+        df, label_sites = transform.compose_labels(
             df=df,
             trans_gap=self.data_cfg.trans_gap,
             cycle_gap=self.data_cfg.cycle_gap
         )
+
+        return transform.flag_seasonal_outliers(df), label_sites
 
     def _process_features(self, label_sites: pd.DataFrame) -> pd.DataFrame:
         years = range(self.data_cfg.start_year - 1, self.data_cfg.end_year + 1)
