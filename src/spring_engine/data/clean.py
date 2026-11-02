@@ -169,7 +169,7 @@ def load_phenology_data(species_id, phenophase_id, input_dir):
         warnings.warn(
             f"No observations for species '{species_id}' and phenophase '{phenophase_id}'. "
             "This may be due to an invalid phenophase or sparse data coverage",
-            category=UserWarning
+            category=UserWarning, stacklevel=2
         )
 
     return pd.DataFrame.from_records(rows, columns=PHENOLOGY_SCHEMA.keys())
