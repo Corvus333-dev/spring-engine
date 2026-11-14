@@ -1,3 +1,4 @@
+import calendar
 import numpy as np
 import pandas as pd
 from scipy.stats import circmean, median_abs_deviation
@@ -218,58 +219,81 @@ def engineer_monthly_features(ds):
         'gdd_sum': ds.gdd.groupby('time.month').sum('time'),
     })
 
-def compose_examples(labels, features, max_lag=12):
+def compose_examples(labels, features, issue_month=3, max_lag=9, buffer=3):
     """
     Assembles one supervised learning example per phenology label by attaching `max_lag` months of lagged weather
-    features for the label's onset month and corresponding grid cell.
+    features preceding `issue_month` for the corresponding grid cell. Examples with onsets prior to the assigned
+    forecast issue date are flagged as not forecastable, as they partially contain post-onset weather data.
 
     Args:
         labels (pd.DataFrame): Phenology labels, including columns ['cell_id', 'onset_date'].
         features (pd.DataFrame): Weather features, including columns
             ['cell_id', 'year', 'month', 'ppt_sum', 'tmax_mean', 'tmin_mean', 'chill_sum', 'gdd_sum'].
-        max_lag (int): Number of consecutive months preceding onset month to use for lagged feature construction. Must
-            be in range [1, 12]. Defaults to 12.
+        issue_month (int): Forecast issue month, which succeeds (on the first day of month) the lagged feature window.
+            Must be in range [1, 12]. Defaults to 3.
+        max_lag (int): Number of consecutive months preceding `issue_month` to use for lagged feature construction.
+            Must be in range [1, 12]. Defaults to 9.
+        buffer (int): Number of consecutive months preceding `issue_month` in which an onset is assigned to the upcoming
+            cycle, but flagged as not forecastable (i.e., annual cycle begins `buffer` months prior to `issue_month`).
+            Must be in range [0, 11]. Defaults to 3.
 
     Returns:
         pd.DataFrame: Examples dataset, retaining labels schema (including target variables `sin_doy` and `cos_doy`),
-        with `max_lag` months of lagged features appended.
+        with `max_lag` months of lagged features (e.g., 'ppt_sum_jan') and `is_forecastable` appended.
 
     Raises:
-        ValueError: If `max_lag` is not in range [1, 12].
-
-    Notes:
-        Monthly features are expected to be continuous for each grid cell so that each groupwise shift corresponds to
-        one monthly lag. This may be presumed from deriving monthly aggregates from daily PRISM climate grids.
+        ValueError: If `issue_month` or `max_lag` is not in range [1, 12], or `buffer` is not in range [0, 11].
+        ValueError: If `features` contains non-unique (`cell_id`, `year`, `month`) combinations.
     """
     if not 1 <= max_lag <= 12:
-        raise ValueError(f"Invalid lag window: {max_lag}")
+        raise ValueError(f"Lag window must be between 1 and 12 (got {max_lag})")
+
+    if not 1 <= issue_month <= 12:
+        raise ValueError(f"Issue month must be between 1 and 12 (got {issue_month})")
+
+    if not 0 <= buffer <= 11:
+        raise ValueError(f"Buffer window must be between 0 and 11 (got {buffer})")
 
     labels = labels.copy()
     features = features.copy()
 
-    labels['period'] = labels['onset_date'].dt.to_period('M') # Anchor (month of onset)
+    onset_year = labels['onset_date'].dt.year
+    onset_month = labels['onset_date'].dt.month
+    offset = (onset_month - issue_month + buffer) // 12 # Offset is in {-1, 0, 1}
+
+    labels['period'] = pd.PeriodIndex.from_fields(
+        year=onset_year + offset,
+        month=issue_month,
+        freq='M'
+    )
+
+    labels['is_forecastable'] = onset_month - issue_month - 12 * offset >= 0
 
     features['period'] = pd.PeriodIndex.from_fields(
         year=features['year'].astype(int), # Hive-style partition category to int
         month=features['month'],
         freq='M'
     )
-    features.sort_values(['cell_id', 'period'], inplace=True)
 
     feature_cols = ['ppt_sum', 'tmax_mean', 'tmin_mean', 'chill_sum', 'gdd_sum']
-    lag_cols = []
+    features = features.set_index(['cell_id', 'period'])[feature_cols].sort_index()
 
-    grouped = features.groupby('cell_id')
+    if not features.index.is_unique:
+        raise ValueError("Features contains non-unique grid cell and period combinations")
 
-    for col in feature_cols:
-        for lag in range(1, max_lag + 1):
-            lag_col = f"{col}_lag{lag}"
-            features[lag_col] = grouped[col].shift(lag)
-            lag_cols.append(lag_col)
+    issue_keys = labels[['cell_id', 'period']].drop_duplicates().reset_index(drop=True)
+    feature_blocks = []
 
-    lag_table = features[['cell_id', 'period'] + lag_cols]
+    for lag in range(max_lag, 0, -1):
+        m = calendar.month_abbr[(issue_month - lag - 1) % 12 + 1].lower()
+        lag_keys = issue_keys.assign(period=issue_keys['period'] - lag)
+        feature_block = lag_keys.join(features, on=['cell_id', 'period'])[feature_cols]
+        feature_block.columns = [f"{c}_{m}" for c in feature_cols]
+        feature_blocks.append(feature_block)
+
+    feature_table = pd.concat([issue_keys, *feature_blocks], axis=1)
 
     return (
-        labels.merge(lag_table, how='left', on=['cell_id', 'period'], validate='many_to_one')
+        labels.merge(feature_table, how='left', on=['cell_id', 'period'], validate='many_to_one')
         .drop(columns='period')
     )
