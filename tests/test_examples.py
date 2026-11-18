@@ -16,8 +16,8 @@ def sample_labels() -> pd.DataFrame:
 def sample_features() -> pd.DataFrame:
     return pd.DataFrame({
         'cell_id': [1, 1, 2, 2],
-        'year': [2024, 2025, 2025, 2025],
-        'month': [12, 1, 5, 6],
+        'year': [2024, 2025, 2024, 2025],
+        'month': [12, 1, 12, 1],
         'ppt_sum': [91.2, 32.3, 155.7, 172.2],
         'tmax_mean': [11.5, 4.2, 22.6, 27.4],
         'tmin_mean': [-3.1, -5.8, 4.5, 6.5],
@@ -26,7 +26,7 @@ def sample_features() -> pd.DataFrame:
     })
 
 def test_label_retention(sample_labels: pd.DataFrame, sample_features: pd.DataFrame):
-    examples = compose_examples(sample_labels, sample_features, max_lag=1)
+    examples = compose_examples(sample_labels, sample_features, issue_month=2, max_lag=2)
 
     pd.testing.assert_frame_equal(
         examples[sample_labels.columns],
@@ -34,17 +34,21 @@ def test_label_retention(sample_labels: pd.DataFrame, sample_features: pd.DataFr
     )
 
 def test_feature_lag(sample_labels: pd.DataFrame, sample_features: pd.DataFrame):
-    examples = compose_examples(sample_labels, sample_features, max_lag=1)
+    examples = compose_examples(sample_labels, sample_features, issue_month=2, max_lag=2)
 
     expected = pd.DataFrame({
-        'ppt_sum_lag1': [91.2, 155.7],
-        'tmax_mean_lag1': [11.5, 22.6],
-        'tmin_mean_lag1': [-3.1, 4.5],
-        'chill_sum_lag1': [14.9, 4.2],
-        'gdd_sum_lag1': [23.2, 194.6]
+        'ppt_sum_dec': [91.2, 155.7],  'ppt_sum_jan': [32.3, 172.2],
+        'tmax_mean_dec': [11.5, 22.6], 'tmax_mean_jan': [4.2, 27.4],
+        'tmin_mean_dec': [-3.1, 4.5],  'tmin_mean_jan': [-5.8, 6.5],
+        'chill_sum_dec': [14.9, 4.2],  'chill_sum_jan': [21.7, 0.7],
+        'gdd_sum_dec': [23.2, 194.6],  'gdd_sum_jan': [0.3, 349.2],
     })
 
     pd.testing.assert_frame_equal(
         examples[expected.columns],
         expected
     )
+
+def test_forecastable_flag(sample_labels: pd.DataFrame, sample_features: pd.DataFrame):
+    examples = compose_examples(sample_labels, sample_features, issue_month=2, max_lag=2)
+    assert examples['is_forecastable'].tolist() == [False, True]
