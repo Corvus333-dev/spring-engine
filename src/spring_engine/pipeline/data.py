@@ -51,7 +51,8 @@ class DataPipeline:
         df = clean.clean_phenology_data(
             df=df,
             lat_bounds=self.data_cfg.lat_bounds,
-            lon_bounds=self.data_cfg.lon_bounds
+            lon_bounds=self.data_cfg.lon_bounds,
+            elevation_bounds=self.data_cfg.elevation_bounds
         )
 
         df, label_sites = transform.compose_labels(

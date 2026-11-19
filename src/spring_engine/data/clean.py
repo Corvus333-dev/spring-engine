@@ -9,6 +9,7 @@ PHENOLOGY_SCHEMA = {
         'site_id': 'int32',
         'latitude': 'float32',
         'longitude': 'float32',
+        'elevation_in_meters': 'float32',
         'state': 'string',
         'individual_id': 'int32',
         'observation_date': 'datetime64[ns]',
@@ -174,16 +175,17 @@ def load_phenology_data(species_id, phenophase_id, input_dir):
 
     return pd.DataFrame.from_records(rows, columns=PHENOLOGY_SCHEMA.keys())
 
-def clean_phenology_data(df, lat_bounds, lon_bounds):
+def clean_phenology_data(df, lat_bounds, lon_bounds, elevation_bounds):
     """
     Cleans phenology data by deduplicating on `observation_id` and filtering invalid rows. Validates non-negative
-    integer IDs, spatial (lat/lon) bounds, contiguous U.S. (i.e., CONUS) membership, date format (YYYY-MM-DD), and
-    phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
+    integer IDs, spatial (lat/lon/elevation) bounds, contiguous U.S. (i.e., CONUS) membership, date format (YYYY-MM-DD),
+    and phenophase status ∈ {-1, 0, 1}. Logs counts of failed checks to console.
 
     Args:
         df (pd.DataFrame): DataFrame of observation entries, with a fixed column schema.
         lat_bounds (tuple of float): Latitudinal bounds (min, max).
         lon_bounds (tuple of float): Longitudinal bounds (min, max).
+        elevation_bounds (tuple of float): Elevation bounds (min, max).
 
     Returns:
         pd.DataFrame: Clean DataFrame copy with enforced dtypes.
@@ -201,7 +203,7 @@ def clean_phenology_data(df, lat_bounds, lon_bounds):
         masks[f"invalid '{col}'"] = (s.isna() | (s % 1 != 0) | (s < 0))
         df[col] = s
 
-    spatial_bounds = {'latitude': lat_bounds, 'longitude': lon_bounds}
+    spatial_bounds = {'latitude': lat_bounds, 'longitude': lon_bounds, 'elevation_in_meters': elevation_bounds}
 
     for col, (min_val, max_val) in spatial_bounds.items():
         s = pd.to_numeric(df[col], errors='coerce')

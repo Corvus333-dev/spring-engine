@@ -14,6 +14,7 @@ class DataConfig:
 
     lat_bounds: tuple[float, float] = (24.0, 50.0)
     lon_bounds: tuple[float, float] = (-125.0, -66.0)
+    elevation_bounds: tuple[float, float] = (-100.0, 4500.0)
 
     chill_bounds = (0.0, 7.0)
     gdd_bounds = (10.0, 30.0)
