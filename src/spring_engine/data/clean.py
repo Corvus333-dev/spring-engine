@@ -9,7 +9,7 @@ PHENOLOGY_SCHEMA = {
         'site_id': 'int32',
         'latitude': 'float32',
         'longitude': 'float32',
-        'elevation_in_meters': 'float32',
+        'elevation_in_meters': 'int16',
         'state': 'string',
         'individual_id': 'int32',
         'observation_date': 'datetime64[ns]',
